@@ -1,0 +1,6 @@
+dist/
+.DS_Store
+bin/
+obj/
+_archive/
+tools/windows_pc.env

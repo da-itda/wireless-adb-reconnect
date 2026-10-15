@@ -1,0 +1,148 @@
+<!-- 설치 마법사: ① adb 준비 → ② 앱 설치 → ③ 휴대폰 페어링 → ④ 완료 (이미 된 단계는 "건너뜀") -->
+<Window x:Class="WirelessAdbReconnect.SetupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:WirelessAdbReconnect"
+        Title="Wireless ADB Reconnect 설정" SizeToContent="WidthAndHeight" ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen" Background="White"
+        FontFamily="{StaticResource UiFont}" Foreground="{StaticResource Ink}"
+        TextOptions.TextFormattingMode="Display" UseLayoutRounding="True">
+    <Grid x:Name="Root" Width="760" Height="486">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="216"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- 왼쪽: 단계 -->
+        <Border Background="{StaticResource Navy}" Padding="20,24,20,28">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,28">
+                    <Image x:Name="SideIcon" Width="44" Height="44" Margin="-2,-2,8,-2"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="ADB Reconnect" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                        <TextBlock Text="무선 ADB 자동 재연결" FontSize="11" Foreground="{StaticResource Side2}" Margin="0,1,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock DockPanel.Dock="Bottom" Height="44" Text="이미 있는 단계는 건너뜁니다" FontSize="11"
+                           Foreground="{StaticResource Side3}" Padding="0,14,0,0"/>
+                <StackPanel x:Name="StepList"/>
+            </DockPanel>
+        </Border>
+
+        <!-- 오른쪽: 내용 -->
+        <Grid Grid.Column="1" Margin="36,32,36,28">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="44"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel x:Name="Header">
+                <TextBlock x:Name="Eyebrow" Style="{StaticResource Eyebrow}"/>
+                <TextBlock x:Name="Title1" Style="{StaticResource H1}"/>
+                <TextBlock x:Name="Desc" Style="{StaticResource Desc}"/>
+            </StackPanel>
+
+            <Grid Grid.Row="1" Margin="0,20,0,0">
+                <!-- ① adb -->
+                <StackPanel x:Name="AdbPanel">
+                    <RadioButton x:Name="ChoiceAdb" GroupName="adb" Style="{StaticResource ChoiceCard}" IsChecked="True">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="adb만 설치" FontSize="15" FontWeight="SemiBold"/>
+                                <Border Background="{StaticResource Brand}" CornerRadius="9" Padding="8,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="추천" FontSize="11" FontWeight="Bold" Foreground="{StaticResource OnBrand}"/>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="Google 공식 platform-tools · 약 15MB · 1분 이내" FontSize="13" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="ChoiceStudio" GroupName="adb" Style="{StaticResource ChoiceCard}">
+                        <StackPanel>
+                            <TextBlock Text="Android Studio 설치" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="앱 개발도 한다면 · 1GB 이상 · 설치 후 한 번 실행해야 adb가 생겨요" FontSize="13" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <ProgressBar x:Name="Progress" Height="6" Margin="0,6,0,0" Visibility="Collapsed" Foreground="{StaticResource Brand}" Background="{StaticResource Line}" BorderThickness="0"/>
+                    <TextBlock x:Name="AdbMessage" FontSize="12" Foreground="{StaticResource Ink2}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                </StackPanel>
+
+                <!-- ② 설치 -->
+                <StackPanel x:Name="InstallPanel" Visibility="Collapsed">
+                    <Border Style="{StaticResource Card}" Background="{StaticResource Soft}">
+                        <DockPanel>
+                            <Path DockPanel.Dock="Left" Width="20" Height="20" Stretch="Uniform" Stroke="{StaticResource Muted}" StrokeThickness="1.8" Margin="0,0,12,0" VerticalAlignment="Center"
+                                  Data="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                            <StackPanel>
+                                <TextBlock Text="설치 위치" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="InstallWhere" FontSize="13" Foreground="{StaticResource Muted}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="0">
+                        <StackPanel>
+                            <DockPanel Margin="16,14">
+                                <CheckBox x:Name="AutoStart" DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="True" VerticalAlignment="Center"/>
+                                <StackPanel>
+                                    <TextBlock Text="로그인할 때 자동 실행" FontSize="14" FontWeight="SemiBold"/>
+                                    <TextBlock Text="PC를 켜면 알아서 휴대폰을 붙여요" FontSize="12" Foreground="{StaticResource Muted}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </DockPanel>
+                            <Border Height="1" Background="{StaticResource Line}"/>
+                            <DockPanel Margin="16,14">
+                                <CheckBox x:Name="Desktop" DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="True" VerticalAlignment="Center"/>
+                                <StackPanel>
+                                    <TextBlock Text="바탕화면 바로가기" FontSize="14" FontWeight="SemiBold"/>
+                                    <TextBlock Text="더블클릭하면 바로 다시 붙이기" FontSize="12" Foreground="{StaticResource Muted}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock x:Name="InstallMessage" FontSize="12" Foreground="{StaticResource Danger}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                </StackPanel>
+
+                <!-- ③ 페어링 -->
+                <local:PairView x:Name="Pair" Visibility="Collapsed"/>
+
+                <!-- ④ 완료 -->
+                <StackPanel x:Name="DonePanel" Visibility="Collapsed" HorizontalAlignment="Stretch">
+                    <Grid Width="72" Height="72" HorizontalAlignment="Center">
+                        <Ellipse Fill="{StaticResource Mint2}"/>
+                        <Ellipse x:Name="DoneCircle" Width="52" Height="52" Fill="{StaticResource Brand}"/>
+                        <Path x:Name="DoneCheck" Data="M0,8 L7,15 L20,1" Stroke="{StaticResource OnBrand}" StrokeThickness="4"
+                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Width="22" Height="17" Stretch="Uniform"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+                    <TextBlock x:Name="DoneTitle" Text="연결됐어요" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                    <TextBlock x:Name="DoneDesc" FontSize="13" Foreground="{StaticResource Muted}" HorizontalAlignment="Center" Margin="0,6,0,0"
+                               Text="이제 무선 연결이 끊기면 원인을 찾아 다시 붙여요."/>
+                    <Border Style="{StaticResource Card}" Margin="0,18,0,0">
+                        <DockPanel>
+                            <Path DockPanel.Dock="Left" Width="22" Height="30" Stretch="Uniform" Stroke="{StaticResource Ink2}" StrokeThickness="1.6" Margin="4,0,16,0"
+                                  Data="M8.5 2.5h7a2.5 2.5 0 0 1 2.5 2.5v14a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 19V5a2.5 2.5 0 0 1 2.5-2.5z M10.5 18.5h3"/>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse x:Name="DoneDot" Width="8" Height="8" Fill="{StaticResource Brand}" Margin="0,0,6,0"/>
+                                <TextBlock x:Name="DoneState" Text="연결됨" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource BrandText}"/>
+                            </StackPanel>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock x:Name="DoneModel" Text="휴대폰" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="DoneAddr" FontSize="12" Foreground="{StaticResource Muted}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                    <Border Background="{StaticResource Soft}" CornerRadius="10" Padding="14,12" Margin="0,12,0,0">
+                        <TextBlock FontSize="12" Foreground="{StaticResource Ink2}" TextWrapping="Wrap" LineHeight="19"
+                                   Text="끊기면 작업 표시줄 트레이의 아이콘을 더블클릭하거나, 바탕화면 바로가기를 다시 열기만 하면 돼요. 아이콘이 초록이면 연결, 빨강이면 끊김이에요."/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <!-- 아래 버튼 줄 -->
+            <DockPanel Grid.Row="2" LastChildFill="False">
+                <Button x:Name="LeftBtn" DockPanel.Dock="Left" Style="{StaticResource LinkButton}" Click="OnLeft"/>
+                <Button x:Name="RightBtn" DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Click="OnRight"/>
+                <Button x:Name="SkipBtn" DockPanel.Dock="Right" Style="{StaticResource OutlineButton}" Content="이미 페어링했어요 · 건너뛰기" Click="OnSkip"/>
+            </DockPanel>
+        </Grid>
+    </Grid>
+</Window>
