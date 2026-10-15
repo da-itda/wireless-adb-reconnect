@@ -46,7 +46,13 @@
 - [x] 2. Mac: SwiftUI 설치 마법사·페어링 화면(시안), 메뉴 상태 헤더, Developer ID 서명 — 35%
 - [x] 3. Windows: WPF 설치 마법사·페어링 화면(시안), 트레이 초록/빨강 — 35%
 - [x] 4. 실제 테스트 (Mac·PC, 이전 ADB Revive 제거 후 새로 설치) — 10% (2026-10-15 Mac 새 설치·옮기기·로그인 항목·연결, PC 설치·옛 앱 정리·연결 OK. Mac 기본 알림은 미해결 → TROUBLESHOOTING)
-- [ ] 5. 문서(README 영어·한글), 커밋 — 5%
+- [x] 5. 문서(README 영어·한글), 커밋 — 5%
+
+### 공개 (2026-10-15)
+- 저장소: https://github.com/da-itda/wireless-adb-reconnect (공개, MIT) · 릴리스 v1.0.0 (Mac Universal 공증 zip, Windows exe, SHA256SUMS)
+- **공개 히스토리는 로컬 `main`과 별개**: 로컬 `public` 브랜치 = `origin/main`. 로컬 `main`(개인 정보가 남은 개발 기록)은 푸시하지 않는다.
+- 다음 공개 방법: `git commit-tree "HEAD^{tree}" -p public -m "<메시지>"` → `git branch -f public <커밋>` → `git push origin public:main` (푸시는 사용자 요청 때만)
+- 다음 후보: 영어 UI(영어·한국어 자동 전환), Windows 코드 서명, Mac 기본 알림 원인 분리
 
 ## 리스크
 - ad-hoc 서명 앱은 다시 빌드하면 로컬 네트워크 권한을 다시 물을 수 있음

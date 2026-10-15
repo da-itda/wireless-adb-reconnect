@@ -11,6 +11,13 @@ import UserNotifications
 let home = FileManager.default.homeDirectoryForCurrentUser
 let appName = "Wireless ADB Reconnect"
 let appShortName = "ADB Reconnect"
+
+/// 화면 언어: OS의 첫 번째 선호 언어가 한국어면 한국어, 그 밖의 언어는 모두 영어 (WAR_LANG=ko|en 으로 강제 — 스냅샷용)
+let isKorean: Bool = {
+    if let forced = ProcessInfo.processInfo.environment["WAR_LANG"] { return forced == "ko" }
+    return Locale.preferredLanguages.first?.hasPrefix("ko") ?? false
+}()
+func L(_ ko: String, _ en: String) -> String { isKorean ? ko : en }
 let logURL = home.appendingPathComponent("Library/Logs/wireless-adb-reconnect.log")
 let serverLogURL = home.appendingPathComponent("Library/Logs/wireless-adb-reconnect-server.log")
 let supportDir = home.appendingPathComponent("Library/Application Support/\(appName)")
@@ -36,11 +43,11 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     func setup() {
         let c = UNUserNotificationCenter.current()
         c.delegate = self
-        let retry = UNNotificationAction(identifier: "retry", title: "다시 시도")
-        let logs = UNNotificationAction(identifier: "log", title: "진단 보기")
+        let retry = UNNotificationAction(identifier: "retry", title: L("다시 시도", "Try again"))
+        let logs = UNNotificationAction(identifier: "log", title: L("진단 보기", "Diagnostics"))
         c.setNotificationCategories([UNNotificationCategory(identifier: "fail", actions: [retry, logs], intentIdentifiers: [])])
         c.requestAuthorization(options: [.alert, .sound]) { ok, err in
-            log("알림 권한: \(ok ? "허용" : "없음") \(err.map { "\($0)" } ?? "")")
+            log(L("알림 권한: ", "Notification permission: ") + (ok ? L("허용", "allowed") : L("없음", "denied")) + " \(err.map { "\($0)" } ?? "")")
         }
     }
 
@@ -198,13 +205,13 @@ func findPhone(timeout: TimeInterval = 8) -> PhoneResult {
         switch st {
         case .waiting(let e), .failed(let e):
             if case .dns(let code) = e, code == -65570 { denied = true }   // kDNSServiceErr_PolicyDenied
-            log("  mDNS 탐색 상태: \(e)")
+            log(L("  mDNS 탐색 상태: ", "  mDNS browse state: ") + "\(e)")
         default: break
         }
     }
     browser.browseResultsChangedHandler = { results, _ in
         guard conn == nil, let r = results.first, case .service(let name, _, _, _) = r.endpoint else { return }
-        log("  mDNS: 휴대폰 발견 \(name)")
+        log(L("  mDNS: 휴대폰 발견 ", "  mDNS: found phone ") + name)
         seen = name
         let c = NWConnection(to: r.endpoint, using: tcp)
         conn = c
@@ -219,7 +226,7 @@ func findPhone(timeout: TimeInterval = 8) -> PhoneResult {
                     finish(.unreachable(name))
                 }
             case .waiting(let e), .failed(let e):
-                log("  휴대폰 접속 테스트 실패: \(e)")
+                log(L("  휴대폰 접속 테스트 실패: ", "  Phone reachability test failed: ") + "\(e)")
                 if case .dns(let code) = e, code == -65570 { denied = true }
                 finish(.unreachable(name))
             default: break
@@ -231,13 +238,13 @@ func findPhone(timeout: TimeInterval = 8) -> PhoneResult {
 
     if sem.wait(timeout: .now() + timeout) == .timedOut, q.sync(execute: { denied }) {
         // 첫 실행이면 권한 요청 창이 떠 있는 중 → 사용자가 누를 시간을 준다
-        log("  로컬 네트워크 권한 요청 대기 중…")
+        log(L("  로컬 네트워크 권한 요청 대기 중…", "  Waiting for Local Network permission…"))
         _ = sem.wait(timeout: .now() + 25)
     }
     let r: PhoneResult = q.sync {
         if let result { return result }
         if denied { return .permissionDenied }
-        if let seen { log("  휴대폰 접속 테스트 시간 초과"); return .unreachable(seen) }
+        if let seen { log(L("  휴대폰 접속 테스트 시간 초과", "  Phone reachability test timed out")); return .unreachable(seen) }
         return .notFound
     }
     browser.cancel(); conn?.cancel()
@@ -251,11 +258,11 @@ enum Strategy: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .reconnectOffline: return "offline 기기 재연결"
-        case .connectOnly: return "서버 유지 + IP:포트 직접 연결"
-        case .ownServer: return "앱이 adb 서버 재시작"
-        case .ownServerBonjour: return "앱이 adb 서버 재시작 (macOS mDNS 백엔드)"
-        case .terminalNoItda: return "Terminal(itda 끔)에서 서버 실행"
+        case .reconnectOffline: return L("offline 기기 재연결", "Reconnect offline device")
+        case .connectOnly: return L("서버 유지 + IP:포트 직접 연결", "Keep server, connect to IP:port")
+        case .ownServer: return L("앱이 adb 서버 재시작", "Restart adb server (owned by app)")
+        case .ownServerBonjour: return L("앱이 adb 서버 재시작 (macOS mDNS 백엔드)", "Restart adb server (macOS mDNS backend)")
+        case .terminalNoItda: return L("터미널에서 서버 실행", "Start server from Terminal")
         }
     }
 }
@@ -324,7 +331,7 @@ final class Reviver {
     func devices() -> [Device] {
         guard let adb, portOpen() else { return [] }
         let out = run(adb, ["devices", "-l"], timeout: 5).out
-        if out.contains("doesn't match this client") { addCause("adb 버전 불일치 → 다른 adb(Android Studio 등)가 서버를 띄움") }
+        if out.contains("doesn't match this client") { addCause(L("adb 버전 불일치 → 다른 adb(Android Studio 등)가 서버를 띄움", "adb version mismatch → another adb (Android Studio, etc.) started the server")) }
         return out.split(separator: "\n").dropFirst().compactMap { line in
             let f = line.split(whereSeparator: { $0 == " " || $0 == "\t" })
             guard f.count >= 2 else { return nil }
@@ -347,49 +354,49 @@ final class Reviver {
             let parts = o.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
             guard parts.count == 2, let pp = Int32(parts[0]) else { break }
             names.append((String(parts[1]) as NSString).lastPathComponent)
-            if pp == 1 { names.append("launchd(데몬, 띄운 프로그램 불명)") }
+            if pp == 1 { names.append(L("launchd(데몬, 띄운 프로그램 불명)", "launchd (daemon, parent unknown)")) }
             cur = pp
         }
         return (pid, names.joined(separator: " ← "))
     }
 
     private func addCause(_ c: String) {
-        if !causes.contains(c) { causes.append(c); log("  원인 후보: \(c)") }
+        if !causes.contains(c) { causes.append(c); log(L("  원인 후보: ", "  Possible cause: ") + c) }
     }
 
     // MARK: 메인 루틴
 
     func revive() -> (ok: Bool, message: String) {
         serverLock.lock(); defer { serverLock.unlock() }
-        log("===== 다시 붙이기 시작")
+        log(L("===== 다시 붙이기 시작", "===== Reconnect started"))
         causes = []
         refreshAdb()
-        guard adb != nil else { return finish(false, "adb를 찾을 수 없습니다. Android SDK platform-tools를 설치하세요.") }
+        guard adb != nil else { return finish(false, L("adb를 찾을 수 없어요. 설정에서 adb를 설치해 주세요.", "adb not found. Install it from Settings.")) }
 
         // 1) 진단
         let before = devices()
-        log("진단: 기기 = \(before.map { "\($0.serial)(\($0.state))" })")
+        log(L("진단: 기기 = ", "Diagnosis: devices = ") + "\(before.map { "\($0.serial)(\($0.state))" })")
         if let d = before.first(where: { $0.state == "device" && $0.isWireless }) {
-            return finish(true, "이미 연결되어 있습니다: \(d.serial)")
+            return finish(true, L("이미 연결되어 있어요: ", "Already connected: ") + d.serial)
         }
         let owner = serverOwner()
         let ownsServer = owner != nil && owner?.pid == server?.processIdentifier
         if let owner {
-            log("진단: adb 서버 소유 = \(ownsServer ? "이 앱" : owner.chain)")
-            if !ownsServer { addCause("adb 서버를 다른 프로그램(\(owner.chain))이 띄움 → 그 프로그램에 로컬 네트워크 권한이 없으면 휴대폰에 못 붙음") }
+            log(L("진단: adb 서버 소유 = ", "Diagnosis: adb server owner = ") + (ownsServer ? L("이 앱", "this app") : owner.chain))
+            if !ownsServer { addCause(L("adb 서버를 다른 프로그램(\(owner.chain))이 띄움 → 그 프로그램에 로컬 네트워크 권한이 없으면 휴대폰에 못 붙음", "Another program (\(owner.chain)) started the adb server → it can't reach the phone without Local Network permission")) }
         } else {
-            log("진단: adb 서버 꺼져 있음")
+            log(L("진단: adb 서버 꺼져 있음", "Diagnosis: adb server not running"))
         }
-        if before.contains(where: { $0.state == "offline" }) { addCause("기기가 offline 상태로 남아 있음") }
-        if before.contains(where: { $0.state == "unauthorized" }) { addCause("휴대폰에서 디버깅 허용 필요 (unauthorized)") }
+        if before.contains(where: { $0.state == "offline" }) { addCause(L("기기가 offline 상태로 남아 있음", "Device is stuck offline")) }
+        if before.contains(where: { $0.state == "unauthorized" }) { addCause(L("휴대폰에서 디버깅 허용 필요 (unauthorized)", "Allow debugging on the phone (unauthorized)")) }
 
         var phone = findPhone()
-        log("진단: 휴대폰 = \(phone)")
+        log(L("진단: 휴대폰 = ", "Diagnosis: phone = ") + "\(phone)")
         switch phone {
         case .found(let a): lastAddr = a
-        case .unreachable: addCause("휴대폰은 보이지만 이 앱에서 접속 불가 → 로컬 네트워크 권한 또는 네트워크(VPN 등) 문제")
-        case .permissionDenied: addCause("이 앱에 로컬 네트워크 권한 없음 → 시스템 설정 > 개인정보 보호 및 보안 > 로컬 네트워크에서 허용")
-        case .notFound: addCause("휴대폰이 무선 디버깅을 알리지 않음 → 무선 디버깅 꺼짐 / 화면 꺼짐·절전 / 다른 Wi‑Fi")
+        case .unreachable: addCause(L("휴대폰은 보이지만 이 앱에서 접속 불가 → 로컬 네트워크 권한 또는 네트워크(VPN 등) 문제", "Phone is visible but unreachable from this app → Local Network permission or network (VPN, etc.)"))
+        case .permissionDenied: addCause(L("이 앱에 로컬 네트워크 권한 없음 → 시스템 설정 > 개인정보 보호 및 보안 > 로컬 네트워크에서 허용", "This app has no Local Network permission → allow it in System Settings > Privacy & Security > Local Network"))
+        case .notFound: addCause(L("휴대폰이 보이지 않음 → 무선 디버깅 꺼짐 / 화면 꺼짐·절전 / 다른 Wi‑Fi", "Phone not visible → wireless debugging off / screen off or power saving / different Wi‑Fi"))
         }
 
         // 2) 시도 순서: 끊지 않는 방법 → 기억한 방법 → 나머지
@@ -402,31 +409,31 @@ final class Reviver {
         if let w = winner, let i = order.firstIndex(of: w), i > quick {
             order.remove(at: i); order.insert(w, at: quick)
         }
-        log("시도 순서: \(order.map(\.title))")
+        log(L("시도 순서: ", "Order: ") + "\(order.map(\.title))")
 
         // 3) 순서대로 시도, 붙으면 종료
         for s in order {
-            log("▶ 시도: \(s.title)")
+            log(L("▶ 시도: ", "▶ Trying: ") + s.title)
             if attempt(s, phone: phone) {
                 winner = s
                 if let d = connected(), d.isIPPort { lastAddr = d.serial }
-                return finish(true, "다시 붙었습니다 — \(s.title)")
+                return finish(true, L("다시 붙었어요 — ", "Reconnected — ") + s.title)
             }
-            log("  실패: \(s.title)")
+            log(L("  실패: ", "  Failed: ") + s.title)
             if s == .ownServer, phone == .notFound {
                 phone = findPhone(timeout: 4)    // 그 사이 휴대폰이 깨어났는지 다시 확인
             }
         }
 
-        var needsPermission = causes.contains { $0.contains("로컬 네트워크 권한") }
+        var needsPermission = causes.contains { $0.contains("로컬 네트워크 권한") || $0.contains("Local Network permission") }
         if case .unreachable = phone { needsPermission = true }
         if needsPermission { NSWorkspace.shared.open(localNetworkSettings) }
-        return finish(false, (causes.first ?? "원인 불명") + " (눌러서 진단 로그 보기)")
+        return finish(false, causes.first ?? L("원인을 찾지 못했어요 — 진단 보기를 확인해 주세요", "Unknown cause — check Diagnostics"))
     }
 
     private func finish(_ ok: Bool, _ msg: String) -> (Bool, String) {
-        if !ok && causes.count > 1 { log("원인 후보 전체:\n  - " + causes.joined(separator: "\n  - ")) }
-        log("결과: \(msg)")
+        if !ok && causes.count > 1 { log(L("원인 후보 전체:", "All possible causes:") + "\n  - " + causes.joined(separator: "\n  - ")) }
+        log(L("결과: ", "Result: ") + msg)
         return (ok, msg)
     }
 
@@ -460,10 +467,10 @@ final class Reviver {
             let out = run(adb, ["connect", a], timeout: 12).out
             log("  adb connect \(a): \(out)")
             let l = out.lowercased()
-            if l.contains("no route to host") { addCause("No route to host → adb 서버를 띄운 프로그램에 로컬 네트워크 권한 없음 (또는 다른 네트워크)") }
-            if l.contains("connection refused") { addCause("Connection refused → 무선 디버깅 포트가 바뀌었거나 꺼짐") }
-            if l.contains("authenticat") { addCause("인증 실패 → 페어링이 풀림. 휴대폰 무선 디버깅에서 다시 페어링(adb pair) 필요") }
-            if l.contains("timed out") { addCause("시간 초과 → 휴대폰 절전 / 다른 Wi‑Fi / VPN 경로") }
+            if l.contains("no route to host") { addCause(L("No route to host → adb 서버를 띄운 프로그램에 로컬 네트워크 권한 없음 (또는 다른 네트워크)", "No route to host → the program running the adb server has no Local Network permission (or different network)")) }
+            if l.contains("connection refused") { addCause(L("Connection refused → 무선 디버깅 포트가 바뀌었거나 꺼짐", "Connection refused → wireless debugging port changed or turned off")) }
+            if l.contains("authenticat") { addCause(L("인증 실패 → 이 Mac과 페어링이 안 됨. 메뉴의 '휴대폰 페어링'으로 다시 페어링하세요", "Authentication failed → this Mac isn't paired. Use 'Pair phone' in the menu")) }
+            if l.contains("timed out") { addCause(L("시간 초과 → 휴대폰 절전 / 다른 Wi‑Fi / VPN 경로", "Timed out → phone asleep / different Wi‑Fi / VPN route")) }
             if waitUntil(3, { connected() != nil }) { return true }
         }
         return false
@@ -474,7 +481,7 @@ final class Reviver {
         server?.terminate()
         server = nil
         if !waitUntil(5, { !portOpen() }), let o = serverOwner() {
-            log("  서버가 안 꺼져서 강제 종료: pid \(o.pid) (\(o.chain))")
+            log(L("  서버가 안 꺼져서 강제 종료: ", "  Server did not stop, killing: ") + "pid \(o.pid) (\(o.chain))")
             kill(o.pid, SIGTERM)
             _ = waitUntil(3) { !portOpen() }
         }
@@ -492,11 +499,11 @@ final class Reviver {
         if let h = try? FileHandle(forWritingTo: serverLogURL) {
             h.seekToEndOfFile(); p.standardOutput = h; p.standardError = h
         }
-        p.terminationHandler = { log("  (앱의 adb 서버 종료, 코드 \($0.terminationStatus))") }
-        do { try p.run() } catch { log("  서버 실행 실패: \(error)"); return false }
+        p.terminationHandler = { log(L("  (앱의 adb 서버 종료, 코드 ", "  (app's adb server exited, code ") + "\($0.terminationStatus))") }
+        do { try p.run() } catch { log(L("  서버 실행 실패: ", "  Failed to start server: ") + "\(error)"); return false }
         server = p
         let ok = waitUntil(5) { portOpen() }
-        log("  앱 소유 서버 시작 pid \(p.processIdentifier) \(env.isEmpty ? "" : "\(env)") → \(ok ? "OK" : "포트 안 열림")")
+        log(L("  앱 소유 서버 시작 pid ", "  Started app-owned server pid ") + "\(p.processIdentifier) \(env.isEmpty ? "" : "\(env)") → " + (ok ? "OK" : L("포트 안 열림", "port not open")))
         return ok
     }
 
@@ -511,7 +518,7 @@ final class Reviver {
         (plist as NSDictionary).write(to: file, atomically: true)
         run("/usr/bin/open", ["-n", "-a", "Terminal", "--env", "ITDA_DISABLE=1", file.path], timeout: 10)
         let ok = waitUntil(10) { portOpen() }
-        if ok, let o = serverOwner() { log("  Terminal 서버 소유: \(o.chain)") }
+        if ok, let o = serverOwner() { log(L("  터미널 서버 소유: ", "  Terminal server owner: ") + o.chain) }
         return ok
     }
 
@@ -554,7 +561,7 @@ func statusImage(_ state: LinkState) -> NSImage {
 /// 메뉴 맨 위: 지금 상태와 기기
 final class StatusHeader: NSView {
     let dot = NSView()
-    let title = NSTextField(labelWithString: "확인 중…")
+    let title = NSTextField(labelWithString: L("확인 중…", "Checking…"))
     let detail = NSTextField(labelWithString: "")
 
     init() {
@@ -587,8 +594,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var item: NSStatusItem!
     let header = StatusHeader()
     let methodLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-    let reviveItem = NSMenuItem(title: "지금 다시 붙이기", action: #selector(reviveNow), keyEquivalent: "r")
-    let loginItem = NSMenuItem(title: "로그인할 때 자동 실행", action: #selector(toggleLogin), keyEquivalent: "")
+    let reviveItem = NSMenuItem(title: L("지금 다시 붙이기", "Reconnect now"), action: #selector(reviveNow), keyEquivalent: "r")
+    let loginItem = NSMenuItem(title: L("로그인할 때 자동 실행", "Launch at login"), action: #selector(toggleLogin), keyEquivalent: "")
     var busy = false
     var setupWindow: NSWindow?
     var pairWindow: NSWindow?
@@ -604,14 +611,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(methodLine)
         menu.addItem(.separator())
         reviveItem.target = self; menu.addItem(reviveItem)
-        menu.addItem(withTitle: "휴대폰 페어링…", action: #selector(showPair), keyEquivalent: "p").target = self
-        menu.addItem(withTitle: "진단 보기", action: #selector(openLog), keyEquivalent: "l").target = self
+        menu.addItem(withTitle: L("휴대폰 페어링…", "Pair phone…"), action: #selector(showPair), keyEquivalent: "p").target = self
+        menu.addItem(withTitle: L("진단 보기", "Diagnostics"), action: #selector(openLog), keyEquivalent: "l").target = self
         menu.addItem(.separator())
         loginItem.target = self; menu.addItem(loginItem)
-        menu.addItem(withTitle: "설정…", action: #selector(showSetup), keyEquivalent: ",").target = self
-        menu.addItem(withTitle: "로컬 네트워크 권한 열기", action: #selector(openSettings), keyEquivalent: "").target = self
+        menu.addItem(withTitle: L("설정…", "Settings…"), action: #selector(showSetup), keyEquivalent: ",").target = self
+        menu.addItem(withTitle: L("로컬 네트워크 권한 열기", "Open Local Network settings"), action: #selector(openSettings), keyEquivalent: "").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "종료 (adb 서버도 종료)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: L("종료 (adb 서버도 종료)", "Quit (stops adb server)"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.menu = menu
         Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in self?.refresh() }
         Notifier.shared.onRetry = { [weak self] in self?.reviveNow() }
@@ -643,16 +650,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !busy else { return }
         busy = true
         reviveItem.isEnabled = false
-        show(.working, "다시 붙이는 중…", "원인을 찾고 순서대로 시도하고 있어요")
+        show(.working, L("다시 붙이는 중…", "Reconnecting…"), L("원인을 찾고 순서대로 시도하고 있어요", "Finding the cause and trying fixes"))
         let started = Date()
         queue.async {
             let r = self.reviver.revive()
             let d = self.reviver.connected()
             let secs = max(1, Int(Date().timeIntervalSince(started).rounded()))
             if r.ok {
-                Notifier.shared.post(ok: true, title: "다시 연결됐어요", body: "\(d?.model ?? d?.serial ?? "휴대폰") · \(secs)초 걸렸어요")
+                Notifier.shared.post(ok: true, title: L("다시 연결됐어요", "Reconnected"), body: "\(d?.model ?? d?.serial ?? L("휴대폰", "Phone")) · " + L("\(secs)초 걸렸어요", "took \(secs)s"))
             } else {
-                Notifier.shared.post(ok: false, title: "연결하지 못했어요", body: r.message)
+                Notifier.shared.post(ok: false, title: L("연결하지 못했어요", "Couldn't reconnect"), body: r.message)
             }
             DispatchQueue.main.async {
                 self.busy = false
@@ -671,11 +678,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 guard !self.busy else { return }
                 if let d {
-                    self.show(.connected, "연결됨", "\(d.model ?? "휴대폰") · 무선\(addr.map { " · \($0)" } ?? "")")
+                    self.show(.connected, L("연결됨", "Connected"), "\(d.model ?? L("휴대폰", "Phone")) · " + L("무선", "Wireless") + (addr.map { " · \($0)" } ?? ""))
                 } else {
-                    self.show(.disconnected, "연결 안 됨", "⌘R 또는 앱 아이콘을 누르면 다시 붙여요")
+                    self.show(.disconnected, L("연결 안 됨", "Disconnected"), L("⌘R 또는 앱 아이콘을 누르면 다시 붙여요", "Press ⌘R or open the app to reconnect"))
                 }
-                self.methodLine.title = "마지막 성공 방법: \(w ?? "-")"
+                self.methodLine.title = L("마지막 성공 방법: ", "Last working fix: ") + (w ?? "-")
                 self.loginItem.state = AppInstall.loginItemEnabled ? .on : .off
             }
         }

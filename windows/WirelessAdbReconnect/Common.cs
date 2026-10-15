@@ -18,6 +18,25 @@ namespace WirelessAdbReconnect
         public const string Exe = "WirelessADBReconnect";
     }
 
+    /// 화면 언어: Windows 표시 언어가 한국어면 한국어, 그 밖의 언어는 모두 영어 (WAR_LANG=ko|en 으로 강제 — 스냅샷용)
+    static class Lang
+    {
+        public static readonly bool Korean =
+            Environment.GetEnvironmentVariable("WAR_LANG") is string forced && forced.Length > 0
+                ? forced == "ko"
+                : System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ko";
+
+        public static string L(string ko, string en) => Korean ? ko : en;
+    }
+
+    /// XAML에서 두 언어 문구: Text="{local:T Ko='한국어', En='English'}"
+    public class T : System.Windows.Markup.MarkupExtension
+    {
+        public string Ko { get; set; } = "";
+        public string En { get; set; } = "";
+        public override object ProvideValue(IServiceProvider sp) => Lang.Korean ? Ko : En;
+    }
+
     static class Paths
     {
         static readonly string LocalAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -183,9 +202,10 @@ namespace WirelessAdbReconnect
 
     static class Ui
     {
-        public static readonly Font Font = new Font("Malgun Gothic", 9.5f);
-        public static readonly Font Bold = new Font("Malgun Gothic", 9.5f, FontStyle.Bold);
-        public static readonly Font Title = new Font("Malgun Gothic", 15f, FontStyle.Bold);
+        static readonly string Face = Lang.Korean ? "Malgun Gothic" : "Segoe UI";
+        public static readonly Font Font = new Font(Face, 9.5f);
+        public static readonly Font Bold = new Font(Face, 9.5f, FontStyle.Bold);
+        public static readonly Font Title = new Font(Face, 15f, FontStyle.Bold);
         public static readonly Color Green = Color.FromArgb(0x1E, 0x9E, 0x5A);
         public static readonly Color Muted = Color.FromArgb(0x60, 0x66, 0x70);
     }

@@ -7,22 +7,24 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using static WirelessAdbReconnect.Lang;
 
 namespace WirelessAdbReconnect
 {
     /// 설치 마법사: ① adb 준비 → ② 앱 설치 → ③ 휴대폰 페어링 → ④ 완료
-    /// 이미 된 단계(adb 있음, 설치됨, 이미 연결됨)는 "건너뜀"으로 표시하고 넘어간다.
+    /// 이미 된 단계(adb 있음, 설치됨, 이미 연결됨)는 L("건너뜀", "Skipped")으로 표시하고 넘어간다.
     public partial class SetupWindow : Window
     {
         internal enum Step { Adb, Install, Pair, Done }
         static readonly (Step step, string title)[] Steps =
-            { (Step.Adb, "adb 준비"), (Step.Install, "앱 설치"), (Step.Pair, "휴대폰 페어링"), (Step.Done, "완료") };
+            { (Step.Adb, L("adb 준비", "Get adb")), (Step.Install, L("앱 설치", "Install")), (Step.Pair, L("휴대폰 페어링", "Pair phone")), (Step.Done, L("완료", "Done")) };
 
         readonly Reviver reviver;
         readonly bool installedMode;
         readonly HashSet<Step> skipped = new HashSet<Step>();
         Step step;
         bool busy;
+        string previewIP;   // 스냅샷에서는 예시 주소
 
         /// 완료 후 설치된 앱(트레이)을 실행할지
         public bool LaunchInstalled { get; private set; }
@@ -32,19 +34,20 @@ namespace WirelessAdbReconnect
             InitializeComponent();
             this.reviver = reviver;
             this.installedMode = installedMode;
-            Title = AppInfo.Name + " 설정";
+            Title = AppInfo.Name + L(" 설정", " Settings");
             Icon = Icons.Window();
             SideIcon.Source = Icons.Large();
             Pair.Attach(reviver);
             Pair.Paired += () => Task.Delay(800).ContinueWith(_ => Dispatcher.BeginInvoke((Action)(() => Go(Step.Done))));
             Closed += (s, e) => Pair.Stop();
 
+            if (preview.HasValue) previewIP = "192.168.0.10";
             var connected = preview.HasValue ? previewDevice : reviver.Connected();
             if (reviver.Adb != null && preview != Step.Adb) skipped.Add(Step.Adb);
             if (installedMode) skipped.Add(Step.Install);
             if (connected != null) skipped.Add(Step.Pair);
 
-            InstallWhere.Text = installedMode ? "내 프로그램 폴더 · 이미 설치됨" : "내 프로그램 폴더 (AppData\\Local\\Programs)";
+            InstallWhere.Text = installedMode ? L("내 프로그램 폴더 · 이미 설치됨", "Programs folder · already installed") : L("내 프로그램 폴더 (AppData\\Local\\Programs)", "Programs folder (AppData\\Local\\Programs)");
             AutoStart.IsChecked = !installedMode || Installer.AutoStart;
             Desktop.IsChecked = !installedMode || Installer.DesktopShortcut;
             ChoiceAdb.Checked += (s, e) => Render();
@@ -99,30 +102,30 @@ namespace WirelessAdbReconnect
             switch (step)
             {
                 case Step.Adb:
-                    Header3("1 / 3단계", "adb를 준비할게요", "이 PC에서 adb를 찾지 못했어요. 앱에 필요한 건 adb뿐이라 가벼운 설치를 추천해요.");
-                    LeftBtn.Content = "이미 설치했어요 · 다시 확인";
+                    Header3(L("1 / 3단계", "Step 1 of 3"), L("adb를 준비할게요", "Let's get adb"), L("이 PC에서 adb를 찾지 못했어요. 앱에 필요한 건 adb뿐이라 가벼운 설치를 추천해요.", "adb wasn't found on this PC. The app only needs adb, so the lightweight install is recommended."));
+                    LeftBtn.Content = L("이미 설치했어요 · 다시 확인", "Already installed · Check again");
                     LeftBtn.Visibility = Visibility.Visible;
-                    RightBtn.Content = ChoiceStudio.IsChecked == true ? "Android Studio 설치" : "설치하고 계속";
+                    RightBtn.Content = ChoiceStudio.IsChecked == true ? L("Android Studio 설치", "Install Android Studio") : L("설치하고 계속", "Install & continue");
                     RightBtn.IsEnabled = !busy;
                     break;
                 case Step.Install:
-                    Header3("2 / 3단계", installedMode ? "설치되어 있어요" : "앱을 설치할게요",
-                        installedMode ? "자동 실행과 바로가기를 바꿀 수 있어요."
-                                      : "설치하면 작업 표시줄 트레이에 머물면서 무선 연결이 끊기면 바로 다시 붙여요.");
-                    LeftBtn.Content = "이전";
+                    Header3(L("2 / 3단계", "Step 2 of 3"), installedMode ? L("설치되어 있어요", "Installed") : L("앱을 설치할게요", "Install the app"),
+                        installedMode ? L("자동 실행과 바로가기를 바꿀 수 있어요.", "You can change launch at login and the desktop shortcut.")
+                                      : L("설치하면 작업 표시줄 트레이에 머물면서 무선 연결이 끊기면 바로 다시 붙여요.", "It stays in the system tray and reconnects as soon as wireless debugging drops."));
+                    LeftBtn.Content = L("이전", "Back");
                     LeftBtn.Visibility = Vis(CanGoBack);
-                    RightBtn.Content = installedMode ? "계속" : "설치하고 계속";
+                    RightBtn.Content = installedMode ? L("계속", "Continue") : L("설치하고 계속", "Install & continue");
                     RightBtn.IsEnabled = true;
                     break;
                 case Step.Pair:
-                    Header3("3 / 3단계 · 처음 한 번만", "휴대폰으로 QR을 찍어 주세요", null);
-                    LeftBtn.Content = Pair.CodeMode ? "QR로 하기" : "QR 대신 페어링 코드로 하기";
+                    Header3(L("3 / 3단계 · 처음 한 번만", "Step 3 of 3 · first time only"), L("휴대폰으로 QR을 찍어 주세요", "Scan the QR with your phone"), null);
+                    LeftBtn.Content = Pair.CodeMode ? L("QR로 하기", "Use QR code") : L("QR 대신 페어링 코드로 하기", "Use a pairing code instead");
                     LeftBtn.Visibility = Visibility.Visible;
                     if (IsVisible) Pair.Start(); else Loaded += (s, e) => { if (step == Step.Pair) Pair.Start(); };
                     break;
                 case Step.Done:
                     LeftBtn.Visibility = Visibility.Collapsed;
-                    RightBtn.Content = "완료";
+                    RightBtn.Content = L("완료", "Done");
                     RightBtn.IsEnabled = true;
                     break;
             }
@@ -148,7 +151,7 @@ namespace WirelessAdbReconnect
                 row.Children.Add(Badge(s, current, done));
                 if (skipped.Contains(s) && s != Step.Done)
                 {
-                    var tag = new TextBlock { Text = "건너뜀", FontSize = 11, Foreground = Res("Side3"), VerticalAlignment = VerticalAlignment.Center };
+                    var tag = new TextBlock { Text = L("건너뜀", "Skipped"), FontSize = 11, Foreground = Res("Side3"), VerticalAlignment = VerticalAlignment.Center };
                     DockPanel.SetDock(tag, Dock.Right);
                     row.Children.Add(tag);
                 }
@@ -199,14 +202,14 @@ namespace WirelessAdbReconnect
         internal void ShowDone(Device d)
         {
             var ok = d != null;
-            DoneTitle.Text = ok ? "연결됐어요" : "준비됐어요";
-            DoneDesc.Text = ok ? "이제 무선 연결이 끊기면 원인을 찾아 다시 붙여요." : "휴대폰에서 무선 디버깅을 켜면 알아서 연결해요.";
+            DoneTitle.Text = ok ? L("연결됐어요", "Connected") : L("준비됐어요", "All set");
+            DoneDesc.Text = ok ? L("이제 무선 연결이 끊기면 원인을 찾아 다시 붙여요.", "From now on, when wireless debugging drops it finds the cause and reconnects.") : L("휴대폰에서 무선 디버깅을 켜면 알아서 연결해요.", "Turn on Wireless debugging on your phone and it connects automatically.");
             DoneCircle.Fill = ok ? Res("Brand") : new SolidColorBrush(Color.FromRgb(0xF4, 0xB7, 0x40));
-            DoneModel.Text = d?.Model ?? "휴대폰";
-            var ip = reviver.LastAddr?.Split(':').FirstOrDefault();
-            DoneAddr.Text = ok ? "무선" + (ip != null ? " · " + ip : "") : "아직 연결 안 됨";
+            DoneModel.Text = d?.Model ?? L("휴대폰", "Phone");
+            var ip = previewIP ?? reviver.LastAddr?.Split(':').FirstOrDefault();
+            DoneAddr.Text = ok ? L("무선", "Wireless") + (ip != null ? " · " + ip : "") : L("아직 연결 안 됨", "Not connected yet");
             DoneDot.Fill = Res(ok ? "Brand" : "Danger");
-            DoneState.Text = ok ? "연결됨" : "끊김";
+            DoneState.Text = ok ? L("연결됨", "Connected") : L("끊김", "Disconnected");
             DoneState.Foreground = Res(ok ? "BrandText" : "Danger");
         }
 
@@ -241,7 +244,7 @@ namespace WirelessAdbReconnect
         {
             reviver.RefreshAdb();
             if (reviver.Adb != null) Next();
-            else AdbMessage.Text = "아직 adb를 찾지 못했어요.";
+            else AdbMessage.Text = L("아직 adb를 찾지 못했어요.", "adb still not found.");
         }
 
         async Task InstallAdb()
@@ -250,26 +253,26 @@ namespace WirelessAdbReconnect
             {
                 var viaWinget = Installer.InstallAndroidStudio();
                 AdbMessage.Text = viaWinget
-                    ? "Android Studio를 설치하고 있어요. 끝나면 Android Studio를 한 번 실행해 설정을 마친 뒤 '다시 확인'을 눌러 주세요."
-                    : "다운로드 페이지를 열었어요. 설치하고 Android Studio를 한 번 실행한 뒤 '다시 확인'을 눌러 주세요.";
+                    ? L("Android Studio를 설치하고 있어요. 끝나면 Android Studio를 한 번 실행해 설정을 마친 뒤 '다시 확인'을 눌러 주세요.", "Installing Android Studio. When done, open it once to finish setup, then press 'Check again'.")
+                    : L("다운로드 페이지를 열었어요. 설치하고 Android Studio를 한 번 실행한 뒤 '다시 확인'을 눌러 주세요.", "Opened the download page. Install it, open Android Studio once, then press 'Check again'.");
                 return;
             }
             busy = true;
             Render();
             Progress.Visibility = Visibility.Visible;
             Progress.Value = 0;
-            AdbMessage.Text = "adb를 받는 중이에요…";
+            AdbMessage.Text = L("adb를 받는 중이에요…", "Downloading adb…");
             try
             {
-                await Installer.InstallPlatformTools(new Progress<int>(p => { Progress.Value = p; AdbMessage.Text = $"adb를 받는 중이에요… {p}%"; }));
+                await Installer.InstallPlatformTools(new Progress<int>(p => { Progress.Value = p; AdbMessage.Text = L("adb를 받는 중이에요… ", "Downloading adb… ") + $"{p}%"; }));
                 AdbMessage.Text = "";
                 busy = false;
                 Recheck();
             }
             catch (Exception ex)
             {
-                Log.Write("adb 설치 실패: " + ex);
-                AdbMessage.Text = "설치하지 못했어요: " + ex.Message;
+                Log.Write(L("adb 설치 실패: ", "adb install failed: ") + ex);
+                AdbMessage.Text = L("설치하지 못했어요: ", "Couldn't install: ") + ex.Message;
             }
             busy = false;
             Progress.Visibility = Visibility.Collapsed;
@@ -290,8 +293,8 @@ namespace WirelessAdbReconnect
             }
             catch (Exception ex)
             {
-                Log.Write("설치 실패: " + ex);
-                InstallMessage.Text = "설치하지 못했어요: " + ex.Message;
+                Log.Write(L("설치 실패: ", "Install failed: ") + ex);
+                InstallMessage.Text = L("설치하지 못했어요: ", "Couldn't install: ") + ex.Message;
             }
         }
     }
@@ -320,7 +323,7 @@ namespace WirelessAdbReconnect
     {
         public PairWindow(Reviver reviver)
         {
-            Title = "휴대폰 페어링 — " + AppInfo.Short;
+            Title = L("휴대폰 페어링 — ", "Pair phone — ") + AppInfo.Short;
             Icon = Icons.Window();
             SizeToContent = SizeToContent.WidthAndHeight;
             ResizeMode = ResizeMode.NoResize;
@@ -332,13 +335,13 @@ namespace WirelessAdbReconnect
 
             var pair = new PairView();
             pair.Attach(reviver);
-            var eyebrow = new TextBlock { Text = "휴대폰 페어링 · 이 PC에서 처음 한 번", Style = (Style)FindResource("Eyebrow") };
-            var title = new TextBlock { Text = "휴대폰으로 QR을 찍어 주세요", Style = (Style)FindResource("H1"), Margin = new Thickness(0, 6, 0, 18) };
-            var toggle = new Button { Content = "QR 대신 페어링 코드로 하기", Style = (Style)FindResource("LinkButton"), Foreground = (Brush)FindResource("BrandText") };
-            var close = new Button { Content = "닫기", Style = (Style)FindResource("OutlineButton") };
-            toggle.Click += (s, e) => { pair.CodeMode = !pair.CodeMode; toggle.Content = pair.CodeMode ? "QR로 하기" : "QR 대신 페어링 코드로 하기"; };
+            var eyebrow = new TextBlock { Text = L("휴대폰 페어링 · 이 PC에서 처음 한 번", "Pair phone · once per PC"), Style = (Style)FindResource("Eyebrow") };
+            var title = new TextBlock { Text = L("휴대폰으로 QR을 찍어 주세요", "Scan the QR with your phone"), Style = (Style)FindResource("H1"), Margin = new Thickness(0, 6, 0, 18) };
+            var toggle = new Button { Content = L("QR 대신 페어링 코드로 하기", "Use a pairing code instead"), Style = (Style)FindResource("LinkButton"), Foreground = (Brush)FindResource("BrandText") };
+            var close = new Button { Content = L("닫기", "Close"), Style = (Style)FindResource("OutlineButton") };
+            toggle.Click += (s, e) => { pair.CodeMode = !pair.CodeMode; toggle.Content = pair.CodeMode ? L("QR로 하기", "Use QR code") : L("QR 대신 페어링 코드로 하기", "Use a pairing code instead"); };
             close.Click += (s, e) => Close();
-            pair.Paired += () => { close.Content = "완료"; close.Style = (Style)FindResource("PrimaryButton"); };
+            pair.Paired += () => { close.Content = L("완료", "Done"); close.Style = (Style)FindResource("PrimaryButton"); };
             var bottom = new DockPanel { LastChildFill = false, Margin = new Thickness(0, 18, 0, 0), Height = 44 };
             DockPanel.SetDock(close, Dock.Right);
             bottom.Children.Add(toggle);

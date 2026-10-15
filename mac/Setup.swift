@@ -35,9 +35,9 @@ enum AppInstall {
     static func setLoginItem(_ on: Bool) {
         do {
             if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
-            log("로그인 항목 \(on ? "등록" : "해제"): \(SMAppService.mainApp.status.rawValue)")
+            log(L("로그인 항목 ", "Login item ") + (on ? L("등록", "registered") : L("해제", "unregistered")) + ": \(SMAppService.mainApp.status.rawValue)")
         } catch {
-            log("로그인 항목 \(on ? "등록" : "해제") 실패: \(error)")
+            log(L("로그인 항목 변경 실패: ", "Login item change failed: ") + "\(error)")
         }
         if on, SMAppService.mainApp.status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
     }
@@ -48,7 +48,7 @@ enum AppInstall {
         if let id = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: id) }
         let app = isInApplications ? Bundle.main.bundleURL : applicationsAppURL
         if FileManager.default.fileExists(atPath: app.path) { try? FileManager.default.trashItem(at: app, resultingItemURL: nil) }
-        log("제거 완료: 로그인 항목 해제, 설정 초기화, \(app.path) → 휴지통")
+        log(L("제거 완료: 로그인 항목 해제, 설정 초기화, 휴지통으로 → ", "Uninstalled: login item removed, settings reset, moved to Trash → ") + app.path)
     }
 
     /// 응용 프로그램 폴더로 복사한 뒤 그쪽을 실행하고 지금 앱은 끝낸다
@@ -56,7 +56,7 @@ enum AppInstall {
         let fm = FileManager.default
         if fm.fileExists(atPath: applicationsAppURL.path) { try fm.removeItem(at: applicationsAppURL) }
         try fm.copyItem(at: Bundle.main.bundleURL, to: applicationsAppURL)
-        log("응용 프로그램 폴더로 복사: \(applicationsAppURL.path)")
+        log(L("응용 프로그램 폴더로 복사: ", "Copied to Applications: ") + applicationsAppURL.path)
         // 지금 앱이 끝나야 새 앱이 adb 서버를 가질 수 있으므로, 잠시 뒤에 연다
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -69,7 +69,7 @@ enum AppInstall {
     static func installPlatformTools(done: @escaping (String?) -> Void) {
         let url = URL(string: "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip")!
         URLSession.shared.downloadTask(with: url) { tmp, _, err in
-            guard let tmp, err == nil else { done("다운로드 실패: \(err?.localizedDescription ?? "")"); return }
+            guard let tmp, err == nil else { done(L("다운로드 실패: ", "Download failed: ") + (err?.localizedDescription ?? "")); return }
             let zip = supportDir.appendingPathComponent("platform-tools.zip")
             try? FileManager.default.removeItem(at: zip)
             do { try FileManager.default.moveItem(at: tmp, to: zip) } catch { done("\(error)"); return }
@@ -77,8 +77,8 @@ enum AppInstall {
             let r = run("/usr/bin/ditto", ["-x", "-k", zip.path, supportDir.path], timeout: 60)
             try? FileManager.default.removeItem(at: zip)
             let ok = FileManager.default.isExecutableFile(atPath: platformToolsDir.appendingPathComponent("adb").path)
-            log("adb 설치 \(ok ? "완료" : "실패"): \(platformToolsDir.path) \(r.out)")
-            done(ok ? nil : "압축 풀기 실패: \(r.out)")
+            log((ok ? L("adb 설치 완료: ", "adb installed: ") : L("adb 설치 실패: ", "adb install failed: ")) + "\(platformToolsDir.path) \(r.out)")
+            done(ok ? nil : L("압축 풀기 실패: ", "Unzip failed: ") + r.out)
         }.resume()
     }
 
@@ -98,7 +98,7 @@ enum AppInstall {
 
 final class PairModel: ObservableObject {
     enum Kind { case waiting, working, success, error }
-    @Published var status = "adb 서버 준비 중…"
+    @Published var status = L("adb 서버 준비 중…", "Preparing adb server…")
     @Published var kind = Kind.working
     @Published var codeMode = false
     @Published var addr = ""
@@ -129,14 +129,14 @@ final class PairModel: ObservableObject {
     }
 
     private func watchQR() {
-        guard reviver.ensureServer() else { set("adb를 찾을 수 없어요. 설정에서 adb를 설치해 주세요.", .error); return }
-        set("휴대폰을 기다리는 중… QR을 찍으면 자동으로 연결돼요", .waiting)
+        guard reviver.ensureServer() else { set(L("adb를 찾을 수 없어요. 설정에서 adb를 설치해 주세요.", "adb not found. Install it from Settings."), .error); return }
+        set(L("휴대폰을 기다리는 중… QR을 찍으면 자동으로 연결돼요", "Waiting for your phone… it connects as soon as you scan the QR"), .waiting)
         let deadline = Date().addingTimeInterval(300)
         var lastTried: String?
         while !cancelled && Date() < deadline {
             // 이미 페어링된 휴대폰이 그 사이 붙었으면(다시 붙이기 루틴 등) 페어링할 필요 없음
             if reviver.connected() != nil {
-                set("이미 페어링되어 있어서 연결됐어요", .success)
+                set(L("이미 페어링되어 있어서 연결됐어요", "Already paired — connected"), .success)
                 DispatchQueue.main.async { self.onPaired() }
                 return
             }
@@ -145,43 +145,43 @@ final class PairModel: ObservableObject {
                svc.addr != lastTried {
                 let parts = svc.addr.split(separator: ":")
                 if parts.count == 2, run("/usr/bin/nc", ["-z", "-G", "2", String(parts[0]), String(parts[1])], timeout: 4).code != 0 {
-                    log("페어링 주소 \(svc.addr) 접속 안 됨 → 새 주소 기다림")
-                    set("휴대폰 주소를 다시 찾는 중… (Wi‑Fi가 바뀌었을 수 있어요)", .working)
+                    log(L("페어링 주소 접속 안 됨 → 새 주소 기다림: ", "Pairing address unreachable → waiting for a new one: ") + svc.addr)
+                    set(L("휴대폰 주소를 다시 찾는 중… (Wi‑Fi가 바뀌었을 수 있어요)", "Looking for the phone again… (its Wi‑Fi may have changed)"), .working)
                 } else {
                     lastTried = svc.addr
                     if pair(svc.addr, password) { return }
-                    set("페어링 실패 — 다시 시도하는 중이에요. 휴대폰의 QR 화면을 닫지 마세요", .error)
+                    set(L("페어링 실패 — 다시 시도하는 중이에요. 휴대폰의 QR 화면을 닫지 마세요", "Pairing failed — retrying. Keep the QR screen open on your phone"), .error)
                 }
             }
             Thread.sleep(forTimeInterval: 1)
         }
-        if !cancelled { set("시간이 지났어요. 창을 닫고 다시 열어 주세요.", .error) }
+        if !cancelled { set(L("시간이 지났어요. 창을 닫고 다시 열어 주세요.", "Timed out. Close this window and open it again."), .error) }
     }
 
     func pairWithCode() {
         let a = addr.trimmingCharacters(in: .whitespaces), c = code.trimmingCharacters(in: .whitespaces)
-        guard !a.isEmpty, !c.isEmpty else { set("IP 주소:포트와 코드를 입력해 주세요.", .error); return }
+        guard !a.isEmpty, !c.isEmpty else { set(L("IP 주소:포트와 코드를 입력해 주세요.", "Enter the IP address:port and the code."), .error); return }
         DispatchQueue.global().async { _ = self.reviver.ensureServer(); _ = self.pair(a, c) }
     }
 
     @discardableResult
     private func pair(_ addr: String, _ secret: String) -> Bool {
         guard let adb = reviver.adb else { return false }
-        set("페어링 중… \(addr)", .working)
+        set(L("페어링 중… ", "Pairing… ") + addr, .working)
         let out = run(adb, ["pair", addr, secret], timeout: 30).out
-        log("페어링 \(addr): \(out)")
-        guard out.contains("Successfully paired") else { set("페어링 실패: \(out)", .error); return false }
-        set("페어링 완료! 연결하는 중…", .working)
+        log(L("페어링 ", "Pairing ") + "\(addr): \(out)")
+        guard out.contains("Successfully paired") else { set(L("페어링 실패: ", "Pairing failed: ") + out, .error); return false }
+        set(L("페어링 완료! 연결하는 중…", "Paired! Connecting…"), .working)
         var ok = waitUntil(15) { self.reviver.connected() != nil }
         if !ok, let a = reviver.mdnsServices().first(where: { $0.type.hasPrefix("_adb-tls-connect") })?.addr {
             run(adb, ["connect", a], timeout: 12)
             ok = waitUntil(5) { self.reviver.connected() != nil }
         }
         if ok {
-            set("연결됐어요", .success)
+            set(L("연결됐어요", "Connected"), .success)
             DispatchQueue.main.async { self.onPaired() }
         } else {
-            set("페어링은 됐지만 아직 연결되지 않았어요. 메뉴 막대에서 '지금 다시 붙이기'를 눌러 주세요.", .error)
+            set(L("페어링은 됐지만 아직 연결되지 않았어요. 메뉴 막대에서 '지금 다시 붙이기'를 눌러 주세요.", "Paired, but not connected yet. Choose 'Reconnect now' in the menu bar."), .error)
         }
         return true
     }
@@ -214,6 +214,8 @@ final class SetupModel: ObservableObject {
     @Published var message: String?
     @Published var wantLogin = true
     @Published var device: Device?
+    /// 완료 화면에 보여 줄 IP (스냅샷에서는 예시 주소)
+    var shownIP: String?
     let reviver: Reviver
     let pair: PairModel
     var onAdbReady: () -> Void = {}
@@ -222,6 +224,7 @@ final class SetupModel: ObservableObject {
     init(reviver: Reviver, connected: Device? = nil, preview: Step? = nil) {
         self.reviver = reviver
         pair = PairModel(reviver: reviver)
+        shownIP = preview == nil ? reviver.lastAddr?.split(separator: ":").first.map(String.init) : "192.168.0.10"
         device = connected ?? (preview == nil ? reviver.connected() : nil)
         wantLogin = AppInstall.loginItemEnabled || !UserDefaults.standard.bool(forKey: "setupShown") || UserDefaults.standard.bool(forKey: "wantLogin")
         if reviver.adb != nil { skipped.insert(.adb) }
@@ -258,16 +261,16 @@ final class SetupModel: ObservableObject {
     func installAdb() {
         if useStudio {
             let viaBrew = AppInstall.installAndroidStudio()
-            message = viaBrew ? "터미널에서 Android Studio를 설치하고 있어요. 끝나면 Android Studio를 한 번 실행해 설정을 마친 뒤 '다시 확인'을 눌러 주세요."
-                              : "다운로드 페이지를 열었어요. 설치하고 Android Studio를 한 번 실행한 뒤 '다시 확인'을 눌러 주세요."
+            message = viaBrew ? L("터미널에서 Android Studio를 설치하고 있어요. 끝나면 Android Studio를 한 번 실행해 설정을 마친 뒤 '다시 확인'을 눌러 주세요.", "Installing Android Studio in Terminal. When done, open Android Studio once to finish setup, then press 'Check again'.")
+                              : L("다운로드 페이지를 열었어요. 설치하고 Android Studio를 한 번 실행한 뒤 '다시 확인'을 눌러 주세요.", "Opened the download page. Install it, open Android Studio once, then press 'Check again'.")
             return
         }
         busy = true
-        message = "adb를 받는 중이에요…"
+        message = L("adb를 받는 중이에요…", "Downloading adb…")
         AppInstall.installPlatformTools { err in
             DispatchQueue.main.async {
                 self.busy = false
-                if let err { self.message = "설치하지 못했어요: \(err)"; return }
+                if let err { self.message = L("설치하지 못했어요: ", "Couldn't install: ") + err; return }
                 self.message = nil
                 self.recheck()
             }
@@ -276,7 +279,7 @@ final class SetupModel: ObservableObject {
 
     func recheck() {
         reviver.refreshAdb()
-        if reviver.adb != nil { onAdbReady(); next() } else { message = "아직 adb를 찾지 못했어요." }
+        if reviver.adb != nil { onAdbReady(); next() } else { message = L("아직 adb를 찾지 못했어요.", "adb still not found.") }
     }
 
     // ② 설치
@@ -287,7 +290,7 @@ final class SetupModel: ObservableObject {
             next()
             return
         }
-        do { try AppInstall.moveToApplicationsAndRelaunch() } catch { message = "옮기지 못했어요: \(error.localizedDescription)" }
+        do { try AppInstall.moveToApplicationsAndRelaunch() } catch { message = L("옮기지 못했어요: ", "Couldn't move the app: ") + error.localizedDescription }
     }
 }
 
@@ -380,7 +383,7 @@ struct SetupView: View {
 
 struct Sidebar: View {
     @ObservedObject var m: SetupModel
-    let titles: [(SetupModel.Step, String)] = [(.adb, "adb 준비"), (.install, "앱 설치"), (.pair, "휴대폰 페어링"), (.done, "완료")]
+    let titles: [(SetupModel.Step, String)] = [(.adb, L("adb 준비", "Get adb")), (.install, L("앱 설치", "Install")), (.pair, L("휴대폰 페어링", "Pair phone")), (.done, L("완료", "Done"))]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
@@ -388,14 +391,14 @@ struct Sidebar: View {
                 Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 44, height: 44).padding(-2)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(appShortName).font(.system(size: 15, weight: .bold)).foregroundColor(.white)
-                    Text("무선 ADB 자동 재연결").font(.system(size: 11)).foregroundColor(.side2)
+                    Text(L("무선 ADB 자동 재연결", "Auto-reconnect")).font(.system(size: 11)).foregroundColor(.side2)
                 }
             }
             VStack(spacing: 6) {
                 ForEach(titles, id: \.0) { step, title in row(step, title) }
             }
             Spacer(minLength: 0)
-            Text("이미 있는 단계는 건너뜁니다")
+            Text(L("이미 있는 단계는 건너뜁니다", "Steps already done are skipped"))
                 .font(.system(size: 11)).foregroundColor(.side3)
                 .frame(height: 44, alignment: .leading)
         }
@@ -425,7 +428,7 @@ struct Sidebar: View {
                 .foregroundColor(current ? .white : done ? .side1 : .side2)
             Spacer(minLength: 0)
             if m.skipped.contains(step) && step != .done {
-                Text("건너뜀").font(.system(size: 11)).foregroundColor(.side3)
+                Text(L("건너뜀", "Skipped")).font(.system(size: 11)).foregroundColor(.side3)
             }
         }
         .padding(.vertical, 9).padding(.horizontal, 10)
@@ -481,11 +484,11 @@ struct AdbStep: View {
     @ObservedObject var m: SetupModel
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            StepHeader(eyebrow: "1 / 3단계", title: "adb를 준비할게요",
-                       desc: "이 Mac에서 adb를 찾지 못했어요. 앱에 필요한 건 adb뿐이라 가벼운 설치를 추천해요.")
+            StepHeader(eyebrow: L("1 / 3단계", "Step 1 of 3"), title: L("adb를 준비할게요", "Let's get adb"),
+                       desc: L("이 Mac에서 adb를 찾지 못했어요. 앱에 필요한 건 adb뿐이라 가벼운 설치를 추천해요.", "adb wasn't found on this Mac. The app only needs adb, so the lightweight install is recommended."))
             VStack(spacing: 10) {
-                ChoiceCard(selected: !m.useStudio, title: "adb만 설치", detail: "Google 공식 platform-tools · 약 15MB · 1분 이내", badge: "추천") { m.useStudio = false }
-                ChoiceCard(selected: m.useStudio, title: "Android Studio 설치", detail: "앱 개발도 한다면 · 1GB 이상 · 설치 후 한 번 실행해야 adb가 생겨요") { m.useStudio = true }
+                ChoiceCard(selected: !m.useStudio, title: L("adb만 설치", "Install adb only"), detail: L("Google 공식 platform-tools · 약 15MB · 1분 이내", "Google's official platform-tools · ~15 MB · under a minute"), badge: L("추천", "Recommended")) { m.useStudio = false }
+                ChoiceCard(selected: m.useStudio, title: L("Android Studio 설치", "Install Android Studio"), detail: L("앱 개발도 한다면 · 1GB 이상 · 설치 후 한 번 실행해야 adb가 생겨요", "If you also build apps · 1 GB+ · open it once after install to get adb")) { m.useStudio = true }
             }
             if let msg = m.message {
                 HStack(spacing: 8) {
@@ -495,9 +498,9 @@ struct AdbStep: View {
             }
             Spacer(minLength: 0)
             HStack {
-                Button("이미 설치했어요 · 다시 확인") { m.recheck() }.buttonStyle(TextButton())
+                Button(L("이미 설치했어요 · 다시 확인", "Already installed · Check again")) { m.recheck() }.buttonStyle(TextButton())
                 Spacer()
-                Button(m.useStudio ? "Android Studio 설치" : "설치하고 계속") { m.installAdb() }
+                Button(m.useStudio ? L("Android Studio 설치", "Install Android Studio") : L("설치하고 계속", "Install & continue")) { m.installAdb() }
                     .buttonStyle(PrimaryButton()).disabled(m.busy)
             }.frame(height: 44)
         }
@@ -508,13 +511,13 @@ struct InstallStep: View {
     @ObservedObject var m: SetupModel
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            StepHeader(eyebrow: "2 / 3단계", title: "앱을 설치할게요",
-                       desc: "설치하면 메뉴 막대에 머물면서 무선 연결이 끊기면 바로 다시 붙여요.")
+            StepHeader(eyebrow: L("2 / 3단계", "Step 2 of 3"), title: L("앱을 설치할게요", "Install the app"),
+                       desc: L("설치하면 메뉴 막대에 머물면서 무선 연결이 끊기면 바로 다시 붙여요.", "It stays in the menu bar and reconnects as soon as wireless debugging drops."))
             HStack(spacing: 12) {
                 Image(systemName: "folder").font(.system(size: 17)).foregroundColor(.muted)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("설치 위치").font(.system(size: 13, weight: .semibold))
-                    Text(AppInstall.isInApplications ? "응용 프로그램 폴더 · 이미 설치됨" : "응용 프로그램 폴더 (지금: \(Bundle.main.bundleURL.deletingLastPathComponent().lastPathComponent))")
+                    Text(L("설치 위치", "Location")).font(.system(size: 13, weight: .semibold))
+                    Text(AppInstall.isInApplications ? L("응용 프로그램 폴더 · 이미 설치됨", "Applications folder · already installed") : L("응용 프로그램 폴더 (지금: ", "Applications folder (now in: ") + Bundle.main.bundleURL.deletingLastPathComponent().lastPathComponent + ")")
                         .font(.system(size: 13)).foregroundColor(.muted)
                 }
                 Spacer()
@@ -524,8 +527,8 @@ struct InstallStep: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.line))
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("로그인할 때 자동 실행").font(.system(size: 14, weight: .semibold))
-                    Text("Mac을 켜면 알아서 휴대폰을 붙여요").font(.system(size: 12)).foregroundColor(.muted)
+                    Text(L("로그인할 때 자동 실행", "Launch at login")).font(.system(size: 14, weight: .semibold))
+                    Text(L("Mac을 켜면 알아서 휴대폰을 붙여요", "Connects your phone automatically when you log in")).font(.system(size: 12)).foregroundColor(.muted)
                 }
                 Spacer()
                 Toggle("", isOn: $m.wantLogin).toggleStyle(.switch).tint(.brandText).labelsHidden()
@@ -535,9 +538,9 @@ struct InstallStep: View {
             if let msg = m.message { Text(msg).font(.system(size: 12)).foregroundColor(.danger) }
             Spacer(minLength: 0)
             HStack {
-                if m.canGoBack { Button("이전") { m.back() }.buttonStyle(TextButton()) }
+                if m.canGoBack { Button(L("이전", "Back")) { m.back() }.buttonStyle(TextButton()) }
                 Spacer()
-                Button(AppInstall.isInApplications ? "계속" : "설치하고 계속") { m.install() }.buttonStyle(PrimaryButton())
+                Button(AppInstall.isInApplications ? L("계속", "Continue") : L("설치하고 계속", "Install & continue")) { m.install() }.buttonStyle(PrimaryButton())
             }.frame(height: 44)
         }
     }
@@ -554,22 +557,22 @@ struct PairContent: View {
                     .background(RoundedRectangle(cornerRadius: 16).fill(Color.white).shadow(color: Color.navy.opacity(0.08), radius: 9, y: 6))
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.line))
                 VStack(alignment: .leading, spacing: 14) {
-                    numbered(1) { Text("휴대폰과 이 Mac을 ") + Text("같은 Wi‑Fi").bold() + Text("에 연결") }
+                    numbered(1) { Text(L("휴대폰과 이 Mac을 ", "Connect your phone and this Mac to the ")) + Text(L("같은 Wi‑Fi", "same Wi‑Fi")).bold() + Text(L("에 연결", "")) }
                     numbered(2) {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("휴대폰에서 무선 디버깅 열기")
-                            Text("설정 › 개발자 옵션 › 무선 디버깅").font(.system(size: 12)).foregroundColor(.ink2)
+                            Text(L("휴대폰에서 무선 디버깅 열기", "On the phone, open Wireless debugging"))
+                            Text(L("설정 › 개발자 옵션 › 무선 디버깅", "Settings › Developer options › Wireless debugging")).font(.system(size: 12)).foregroundColor(.ink2)
                                 .padding(.horizontal, 8).padding(.vertical, 4).background(RoundedRectangle(cornerRadius: 6).fill(Color.soft))
                         }
                     }
-                    numbered(3) { Text("QR 코드로 기기 페어링").bold() + Text("을 눌러 왼쪽 QR 찍기") }
+                    numbered(3) { isKorean ? Text("QR 코드로 기기 페어링").bold() + Text("을 눌러 왼쪽 QR 찍기") : Text("Tap ") + Text("Pair device with QR code").bold() + Text(" and scan this QR") }
                 }
             }
             if pair.codeMode {
                 HStack(spacing: 8) {
-                    TextField("IP 주소:포트", text: $pair.addr).textFieldStyle(.roundedBorder).frame(width: 170)
-                    TextField("6자리 코드", text: $pair.code).textFieldStyle(.roundedBorder).frame(width: 100)
-                    Button("페어링") { pair.pairWithCode() }
+                    TextField(L("IP 주소:포트", "IP address:port"), text: $pair.addr).textFieldStyle(.roundedBorder).frame(width: 170)
+                    TextField(L("6자리 코드", "6-digit code"), text: $pair.code).textFieldStyle(.roundedBorder).frame(width: 100)
+                    Button(L("페어링", "Pair")) { pair.pairWithCode() }
                 }
             }
             HStack(spacing: 10) {
@@ -605,14 +608,14 @@ struct PairStep: View {
     var autoStart = true
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            StepHeader(eyebrow: "3 / 3단계 · 처음 한 번만", title: "휴대폰으로 QR을 찍어 주세요")
+            StepHeader(eyebrow: L("3 / 3단계 · 처음 한 번만", "Step 3 of 3 · first time only"), title: L("휴대폰으로 QR을 찍어 주세요", "Scan the QR with your phone"))
             PairContent(pair: pair, autoStart: autoStart)
             Spacer(minLength: 0)
             HStack {
-                Button(pair.codeMode ? "QR로 하기" : "QR 대신 페어링 코드로 하기") { pair.codeMode.toggle() }
+                Button(pair.codeMode ? L("QR로 하기", "Use QR code") : L("QR 대신 페어링 코드로 하기", "Use a pairing code instead")) { pair.codeMode.toggle() }
                     .buttonStyle(TextButton(color: .brandText))
                 Spacer()
-                Button("이미 페어링했어요 · 건너뛰기") { m.next() }.buttonStyle(OutlineButton())
+                Button(L("이미 페어링했어요 · 건너뛰기", "Already paired · Skip")) { m.next() }.buttonStyle(OutlineButton())
             }.frame(height: 44)
         }
     }
@@ -628,22 +631,22 @@ struct DoneStep: View {
                 Image(systemName: m.device != nil ? "checkmark" : "wifi").font(.system(size: 22, weight: .heavy)).foregroundColor(.onBrand)
             }.padding(.top, 8)
             VStack(spacing: 6) {
-                Text(m.device != nil ? "연결됐어요" : "준비됐어요").font(.system(size: 24, weight: .bold))
-                Text(m.device != nil ? "이제 무선 연결이 끊기면 원인을 찾아 다시 붙여요."
-                                     : "휴대폰에서 무선 디버깅을 켜면 알아서 연결해요.")
+                Text(m.device != nil ? L("연결됐어요", "Connected") : L("준비됐어요", "All set")).font(.system(size: 24, weight: .bold))
+                Text(m.device != nil ? L("이제 무선 연결이 끊기면 원인을 찾아 다시 붙여요.", "From now on, when wireless debugging drops it finds the cause and reconnects.")
+                                     : L("휴대폰에서 무선 디버깅을 켜면 알아서 연결해요.", "Turn on Wireless debugging on your phone and it connects automatically."))
                     .font(.system(size: 13)).foregroundColor(.muted)
             }
             HStack(spacing: 14) {
                 Image(systemName: "candybarphone").font(.system(size: 24)).foregroundColor(.ink2).frame(width: 34)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(m.device?.model ?? "휴대폰").font(.system(size: 14, weight: .semibold))
-                    Text(m.device != nil ? "무선\(m.reviver.lastAddr.map { " · " + ($0.split(separator: ":").first.map(String.init) ?? "") } ?? "")" : "아직 연결 안 됨")
+                    Text(m.device?.model ?? L("휴대폰", "Phone")).font(.system(size: 14, weight: .semibold))
+                    Text(m.device != nil ? L("무선", "Wireless") + (m.shownIP.map { " · " + $0 } ?? "") : L("아직 연결 안 됨", "Not connected yet"))
                         .font(.system(size: 12)).foregroundColor(.muted)
                 }
                 Spacer()
                 HStack(spacing: 6) {
                     Circle().fill(m.device != nil ? Color.brand : Color.danger).frame(width: 8, height: 8)
-                    Text(m.device != nil ? "연결됨" : "끊김").font(.system(size: 12, weight: .semibold))
+                    Text(m.device != nil ? L("연결됨", "Connected") : L("끊김", "Disconnected")).font(.system(size: 12, weight: .semibold))
                         .foregroundColor(m.device != nil ? .brandText : .danger)
                 }
             }
@@ -651,7 +654,7 @@ struct DoneStep: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.line))
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "info.circle").foregroundColor(.muted)
-                Text("끊기면 메뉴 막대의 아이콘을 누르거나, 앱을 다시 열기만 하면 돼요. 아이콘이 초록이면 연결, 빨강이면 끊김이에요.")
+                Text(L("끊기면 메뉴 막대의 아이콘을 누르거나, 앱을 다시 열기만 하면 돼요. 아이콘이 초록이면 연결, 빨강이면 끊김이에요.", "If it drops, click the menu bar icon or just open the app again. Green icon = connected, red = disconnected."))
                     .font(.system(size: 12)).foregroundColor(.ink2).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
@@ -660,7 +663,7 @@ struct DoneStep: View {
             Spacer(minLength: 0)
             HStack {
                 Spacer()
-                Button("완료") { m.close() }.buttonStyle(PrimaryButton())
+                Button(L("완료", "Done")) { m.close() }.buttonStyle(PrimaryButton())
             }.frame(height: 44)
         }
     }
@@ -673,13 +676,13 @@ struct PairWindowView: View {
     let close: () -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            StepHeader(eyebrow: "휴대폰 페어링 · 이 Mac에서 처음 한 번", title: "휴대폰으로 QR을 찍어 주세요")
+            StepHeader(eyebrow: L("휴대폰 페어링 · 이 Mac에서 처음 한 번", "Pair phone · once per Mac"), title: L("휴대폰으로 QR을 찍어 주세요", "Scan the QR with your phone"))
             PairContent(pair: pair, autoStart: autoStart)
             HStack {
-                Button(pair.codeMode ? "QR로 하기" : "QR 대신 페어링 코드로 하기") { pair.codeMode.toggle() }
+                Button(pair.codeMode ? L("QR로 하기", "Use QR code") : L("QR 대신 페어링 코드로 하기", "Use a pairing code instead")) { pair.codeMode.toggle() }
                     .buttonStyle(TextButton(color: .brandText))
                 Spacer()
-                Button(pair.kind == .success ? "완료" : "닫기") { close() }
+                Button(pair.kind == .success ? L("완료", "Done") : L("닫기", "Close")) { close() }
                     .buttonStyle(pair.kind == .success ? AnyButtonStyle(PrimaryButton()) : AnyButtonStyle(OutlineButton()))
             }.frame(height: 44)
         }
@@ -714,7 +717,7 @@ private func hostWindow<V: View>(_ view: V, title: String, onClose: @escaping ()
 func makeSetupWindow(reviver: Reviver, onAdbReady: @escaping () -> Void, onClose: @escaping () -> Void) -> NSWindow {
     let m = SetupModel(reviver: reviver)
     m.onAdbReady = onAdbReady
-    let w = hostWindow(SetupView(m: m), title: "\(appName) 설정") { m.pair.stop(); onClose() }
+    let w = hostWindow(SetupView(m: m), title: appName + L(" 설정", " Settings")) { m.pair.stop(); onClose() }
     m.close = { [weak w] in w?.close() }
     return w
 }
@@ -722,7 +725,7 @@ func makeSetupWindow(reviver: Reviver, onAdbReady: @escaping () -> Void, onClose
 func makePairWindow(reviver: Reviver, onClose: @escaping () -> Void) -> NSWindow {
     let pair = PairModel(reviver: reviver)
     var window: NSWindow?
-    let w = hostWindow(PairWindowView(pair: pair, close: { window?.close() }), title: "휴대폰 페어링 — \(appShortName)") { pair.stop(); onClose() }
+    let w = hostWindow(PairWindowView(pair: pair, close: { window?.close() }), title: L("휴대폰 페어링 — ", "Pair phone — ") + appShortName) { pair.stop(); onClose() }
     window = w
     return w
 }

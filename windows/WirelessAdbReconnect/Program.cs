@@ -81,6 +81,8 @@ namespace WirelessAdbReconnect
             {
                 Source = new Uri("pack://application:,,,/WirelessADBReconnect;component/Theme.xaml"),
             });
+            // 영어 화면은 Windows 기본 글꼴(Segoe UI), 한국어는 맑은 고딕
+            if (!Lang.Korean) app.Resources["UiFont"] = new FontFamily("Segoe UI, Malgun Gothic");
         }
 
         /// exe에 리소스로 넣은 DLL(QRCoder)을 불러온다 → exe 하나로 배포

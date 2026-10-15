@@ -6,6 +6,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 using WinForms = System.Windows.Forms;
+using static WirelessAdbReconnect.Lang;
 
 namespace WirelessAdbReconnect
 {
@@ -52,12 +53,12 @@ namespace WirelessAdbReconnect
                 k.SetValue("NoModify", 1);
                 k.SetValue("NoRepair", 1);
             }
-            Log.Write("설치 완료: " + Paths.InstalledExe);
+            Log.Write(L("설치 완료: ", "Installed: ") + Paths.InstalledExe);
         }
 
         public static void Uninstall(bool quiet = false)
         {
-            if (!quiet && WinForms.MessageBox.Show($"{AppInfo.Name}를 제거할까요?\n(설치한 adb와 기록은 남겨 둡니다)", AppInfo.Name,
+            if (!quiet && WinForms.MessageBox.Show(L($"{AppInfo.Name}를 제거할까요?\n(설치한 adb와 기록은 남겨 둡니다)", $"Uninstall {AppInfo.Name}?\n(adb and logs are kept)"), AppInfo.Name,
                     WinForms.MessageBoxButtons.OKCancel, WinForms.MessageBoxIcon.Question) != WinForms.DialogResult.OK) return;
             StopOtherInstances();
             AutoStart = false;
@@ -66,8 +67,8 @@ namespace WirelessAdbReconnect
             // 실행 중인 자기 자신은 지울 수 없으니 잠시 뒤 cmd가 폴더를 지운다
             Process.Start(new ProcessStartInfo("cmd.exe", $"/c timeout /t 2 /nobreak >nul & rmdir /s /q \"{Paths.InstallDir}\"")
             { CreateNoWindow = true, UseShellExecute = false });
-            Log.Write("제거 완료");
-            if (!quiet) WinForms.MessageBox.Show("제거했습니다.", AppInfo.Name);
+            Log.Write(L("제거 완료", "Uninstalled"));
+            if (!quiet) WinForms.MessageBox.Show(L("제거했습니다.", "Uninstalled."), AppInfo.Name);
         }
 
         /// 옛 이름(ADB Revive)으로 설치된 것을 정리한다: 프로세스·자동 실행·바로가기·제거 항목·폴더
@@ -84,7 +85,7 @@ namespace WirelessAdbReconnect
                 try { File.Delete(l); } catch { }
             try { Registry.CurrentUser.DeleteSubKeyTree(UninstallRoot + "ADBRevive", false); } catch { }
             try { Directory.Delete(oldDir, true); } catch { }
-            Log.Write("옛 ADB Revive 정리");
+            Log.Write(L("옛 ADB Revive 정리", "Removed old ADB Revive"));
         }
 
         public static bool AutoStart
@@ -126,7 +127,7 @@ namespace WirelessAdbReconnect
             sc.TargetPath = Paths.InstalledExe;
             sc.WorkingDirectory = Paths.InstallDir;
             sc.IconLocation = Paths.InstalledExe + ",0";
-            sc.Description = AppInfo.Korean + " — 무선 디버깅이 끊기면 다시 붙여 줍니다";
+            sc.Description = L(AppInfo.Korean + " — 무선 디버깅이 끊기면 다시 붙여 줍니다", "Auto-reconnect wireless debugging (ADB over Wi-Fi)");
             sc.Save();
         }
 
@@ -154,7 +155,7 @@ namespace WirelessAdbReconnect
                 Directory.Delete(tmp, true);
                 File.Delete(zip);
             });
-            Log.Write("adb 설치 완료: " + Paths.PlatformTools);
+            Log.Write(L("adb 설치 완료: ", "adb installed: ") + Paths.PlatformTools);
         }
 
         /// winget이 있으면 winget으로, 없으면 다운로드 페이지를 연다
@@ -163,7 +164,7 @@ namespace WirelessAdbReconnect
             if (Shell.Run("where", "winget", 5000).code == 0)
             {
                 Process.Start(new ProcessStartInfo("cmd.exe",
-                    "/k winget install -e --id Google.AndroidStudio --accept-package-agreements --accept-source-agreements && echo. && echo 설치가 끝나면 Android Studio를 한 번 실행해 설정 마법사를 마치세요 (그때 adb가 설치됩니다).")
+                    "/k winget install -e --id Google.AndroidStudio --accept-package-agreements --accept-source-agreements && echo. && echo " + L("설치가 끝나면 Android Studio를 한 번 실행해 설정 마법사를 마치세요 (그때 adb가 설치됩니다).", "When done, open Android Studio once and finish the setup wizard (that installs adb)."))
                 { UseShellExecute = true });
                 return true;
             }

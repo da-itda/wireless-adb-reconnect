@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static WirelessAdbReconnect.Lang;
 
 namespace WirelessAdbReconnect
 {
@@ -16,11 +17,11 @@ namespace WirelessAdbReconnect
         readonly NotifyIcon tray = new NotifyIcon();
         readonly Icon iconOn, iconOff;
         readonly SynchronizationContext ui = SynchronizationContext.Current;
-        readonly ToolStripMenuItem statusItem = new ToolStripMenuItem("확인 중…") { Enabled = false };
+        readonly ToolStripMenuItem statusItem = new ToolStripMenuItem(L("확인 중…", "Checking…")) { Enabled = false };
         readonly ToolStripMenuItem detailItem = new ToolStripMenuItem("") { Enabled = false };
         readonly ToolStripMenuItem methodItem = new ToolStripMenuItem("") { Enabled = false };
-        readonly ToolStripMenuItem reviveItem = new ToolStripMenuItem("지금 다시 붙이기");
-        readonly ToolStripMenuItem autoItem = new ToolStripMenuItem("로그인할 때 자동 실행") { CheckOnClick = true };
+        readonly ToolStripMenuItem reviveItem = new ToolStripMenuItem(L("지금 다시 붙이기", "Reconnect now"));
+        readonly ToolStripMenuItem autoItem = new ToolStripMenuItem(L("로그인할 때 자동 실행", "Launch at login")) { CheckOnClick = true };
         readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer { Interval = 10000 };
         bool busy, lastOk = true, dialogOpen;
 
@@ -32,7 +33,7 @@ namespace WirelessAdbReconnect
             statusItem.Font = new Font(Ui.Font, FontStyle.Bold);
             statusItem.Image = AppIcon.Image(32);
             reviveItem.Font = new Font(Ui.Font, FontStyle.Bold);
-            reviveItem.ShortcutKeyDisplayString = "더블클릭";
+            reviveItem.ShortcutKeyDisplayString = L("더블클릭", "Double-click");
             reviveItem.Click += (s, e) => ReviveNow();
             autoItem.Checked = Installer.AutoStart;
             autoItem.Enabled = Installer.IsInstalled;
@@ -43,14 +44,14 @@ namespace WirelessAdbReconnect
             menu.Items.Add(detailItem);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(reviveItem);
-            menu.Items.Add("휴대폰 페어링…", null, (s, e) => ShowDialog(new PairWindow(reviver)));
-            menu.Items.Add("진단 보기", null, (s, e) => OpenLog());
+            menu.Items.Add(L("휴대폰 페어링…", "Pair phone…"), null, (s, e) => ShowDialog(new PairWindow(reviver)));
+            menu.Items.Add(L("진단 보기", "Diagnostics"), null, (s, e) => OpenLog());
             menu.Items.Add(methodItem);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(autoItem);
-            menu.Items.Add("설정…", null, (s, e) => ShowDialog(new SetupWindow(reviver, Installer.IsRunningInstalled)));
+            menu.Items.Add(L("설정…", "Settings…"), null, (s, e) => ShowDialog(new SetupWindow(reviver, Installer.IsRunningInstalled)));
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("종료 (adb 서버도 종료)", null, (s, e) => Quit());
+            menu.Items.Add(L("종료 (adb 서버도 종료)", "Quit (stops adb server)"), null, (s, e) => Quit());
 
             tray.Icon = iconOn;
             tray.Text = AppInfo.Short;
@@ -86,9 +87,9 @@ namespace WirelessAdbReconnect
             if (busy) return;
             busy = true;
             reviveItem.Enabled = false;
-            statusItem.Text = "다시 붙이는 중…";
-            detailItem.Text = "원인을 찾고 순서대로 시도하고 있어요";
-            tray.Text = AppInfo.Short + " — 다시 붙이는 중…";
+            statusItem.Text = L("다시 붙이는 중…", "Reconnecting…");
+            detailItem.Text = L("원인을 찾고 순서대로 시도하고 있어요", "Finding the cause and trying fixes");
+            tray.Text = AppInfo.Short + L(" — 다시 붙이는 중…", " — reconnecting…");
             var started = DateTime.Now;
             Task.Run(() =>
             {
@@ -97,14 +98,14 @@ namespace WirelessAdbReconnect
             }).ContinueWith(t =>
             {
                 var ok = t.Status == TaskStatus.RanToCompletion && t.Result.ok;
-                var message = t.Status == TaskStatus.RanToCompletion ? t.Result.message : "오류: " + t.Exception?.GetBaseException().Message;
+                var message = t.Status == TaskStatus.RanToCompletion ? t.Result.message : L("오류: ", "Error: ") + t.Exception?.GetBaseException().Message;
                 var d = t.Status == TaskStatus.RanToCompletion ? t.Result.device : null;
                 var secs = Math.Max(1, (int)Math.Round((DateTime.Now - started).TotalSeconds));
                 ui.Post(_ =>
                 {
                     lastOk = ok;
-                    if (ok) tray.ShowBalloonTip(5000, "다시 연결됐어요", $"{d?.Model ?? d?.Serial ?? "휴대폰"} · {secs}초 걸렸어요", ToolTipIcon.None);
-                    else tray.ShowBalloonTip(8000, "연결하지 못했어요", message, ToolTipIcon.None);
+                    if (ok) tray.ShowBalloonTip(5000, L("다시 연결됐어요", "Reconnected"), $"{d?.Model ?? d?.Serial ?? L("휴대폰", "Phone")} · " + L($"{secs}초 걸렸어요", $"took {secs}s"), ToolTipIcon.None);
+                    else tray.ShowBalloonTip(8000, L("연결하지 못했어요", "Couldn't reconnect"), message, ToolTipIcon.None);
                     busy = false;
                     reviveItem.Enabled = true;
                     Refresh();
@@ -124,10 +125,10 @@ namespace WirelessAdbReconnect
                 {
                     if (busy) return;
                     tray.Icon = d != null ? iconOn : iconOff;
-                    statusItem.Text = d != null ? "● 연결됨" : "● 연결 안 됨";
-                    detailItem.Text = d != null ? $"{d.Model ?? "휴대폰"} · 무선{(ip != null ? " · " + ip : "")}" : "아이콘을 더블클릭하면 다시 붙여요";
-                    tray.Text = d != null ? AppInfo.Short + " — 연결됨" : AppInfo.Short + " — 끊김 (더블클릭: 다시 붙이기)";
-                    methodItem.Text = "마지막 성공 방법: " + (w.HasValue ? Reviver.Title(w.Value) : "-");
+                    statusItem.Text = d != null ? L("● 연결됨", "● Connected") : L("● 연결 안 됨", "● Disconnected");
+                    detailItem.Text = d != null ? $"{d.Model ?? L("휴대폰", "Phone")} · " + L("무선", "Wireless") + (ip != null ? " · " + ip : "") : L("아이콘을 더블클릭하면 다시 붙여요", "Double-click the icon to reconnect");
+                    tray.Text = d != null ? AppInfo.Short + L(" — 연결됨", " — connected") : AppInfo.Short + L(" — 끊김 (더블클릭: 다시 붙이기)", " — disconnected (double-click to reconnect)");
+                    methodItem.Text = L("마지막 성공 방법: ", "Last working fix: ") + (w.HasValue ? Reviver.Title(w.Value) : "-");
                     autoItem.Enabled = Installer.IsInstalled;
                     autoItem.Checked = Installer.AutoStart;
                 }, null);

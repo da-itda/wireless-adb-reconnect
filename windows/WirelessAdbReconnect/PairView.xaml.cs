@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using static WirelessAdbReconnect.Lang;
 
 namespace WirelessAdbReconnect
 {
@@ -32,7 +33,7 @@ namespace WirelessAdbReconnect
         {
             InitializeComponent();
             try { Qr.Source = Qr_.Make($"WIFI:T:ADB;S:{name};P:{password};;"); }
-            catch (Exception e) { Log.Write("QR 생성 실패: " + e); }
+            catch (Exception e) { Log.Write(L("QR 생성 실패: ", "QR generation failed: ") + e); }
         }
 
         internal void Attach(Reviver r) => reviver = r;
@@ -68,8 +69,8 @@ namespace WirelessAdbReconnect
 
         void WatchQr(CancellationToken ct)
         {
-            if (!reviver.EnsureServer()) { Set("adb를 찾을 수 없어요. 설정에서 adb를 설치해 주세요.", Kind.Error); return; }
-            Set("휴대폰을 기다리는 중… QR을 찍으면 자동으로 연결돼요", Kind.Waiting);
+            if (!reviver.EnsureServer()) { Set(L("adb를 찾을 수 없어요. 설정에서 adb를 설치해 주세요.", "adb not found. Install it from Settings."), Kind.Error); return; }
+            Set(L("휴대폰을 기다리는 중… QR을 찍으면 자동으로 연결돼요", "Waiting for your phone… it connects as soon as you scan the QR"), Kind.Waiting);
             var deadline = DateTime.Now.AddMinutes(5);
             string lastTried = null;
             while (!ct.IsCancellationRequested && DateTime.Now < deadline)
@@ -78,7 +79,7 @@ namespace WirelessAdbReconnect
                 if (reviver.Connected() != null)
                 {
                     Succeeded = true;
-                    Set("이미 페어링되어 있어서 연결됐어요", Kind.Success);
+                    Set(L("이미 페어링되어 있어서 연결됐어요", "Already paired — connected"), Kind.Success);
                     Dispatcher.BeginInvoke((Action)(() => Paired?.Invoke()));
                     return;
                 }
@@ -88,26 +89,26 @@ namespace WirelessAdbReconnect
                 {
                     if (!Shell.TcpReachable(svc.Address))
                     {
-                        Log.Write($"페어링 주소 {svc.Address} 접속 안 됨 → 새 주소 기다림");
-                        Set("휴대폰 주소를 다시 찾는 중… (Wi‑Fi가 바뀌었을 수 있어요)", Kind.Working);
+                        Log.Write(L("페어링 주소 접속 안 됨 → 새 주소 기다림: ", "Pairing address unreachable → waiting for a new one: ") + svc.Address);
+                        Set(L("휴대폰 주소를 다시 찾는 중… (Wi‑Fi가 바뀌었을 수 있어요)", "Looking for the phone again… (its Wi‑Fi may have changed)"), Kind.Working);
                     }
                     else
                     {
                         lastTried = svc.Address;
                         if (Pair(svc.Address, password)) return;
-                        Set("페어링 실패 — 다시 시도하는 중이에요. 휴대폰의 QR 화면을 닫지 마세요", Kind.Error);
+                        Set(L("페어링 실패 — 다시 시도하는 중이에요. 휴대폰의 QR 화면을 닫지 마세요", "Pairing failed — retrying. Keep the QR screen open on your phone"), Kind.Error);
                     }
                 }
                 Thread.Sleep(1000);
             }
-            if (!ct.IsCancellationRequested) Set("시간이 지났어요. 창을 닫고 다시 열어 주세요.", Kind.Error);
+            if (!ct.IsCancellationRequested) Set(L("시간이 지났어요. 창을 닫고 다시 열어 주세요.", "Timed out. Close this window and open it again."), Kind.Error);
         }
 
         void OnCodePair(object sender, RoutedEventArgs e)
         {
             var a = Addr.Text.Trim();
             var c = Code.Text.Trim();
-            if (a.Length == 0 || c.Length == 0) { Set("IP 주소:포트와 코드를 입력해 주세요.", Kind.Error); return; }
+            if (a.Length == 0 || c.Length == 0) { Set(L("IP 주소:포트와 코드를 입력해 주세요.", "Enter the IP address:port and the code."), Kind.Error); return; }
             CodeBtn.IsEnabled = false;
             Task.Run(() => { reviver.EnsureServer(); Pair(a, c); })
                 .ContinueWith(_ => Dispatcher.BeginInvoke((Action)(() => CodeBtn.IsEnabled = true)));
@@ -115,12 +116,12 @@ namespace WirelessAdbReconnect
 
         bool Pair(string address, string secret)
         {
-            if (!reviver.EnsureServer()) { Set("adb를 찾을 수 없어요.", Kind.Error); return false; }
-            Set("페어링 중… " + address, Kind.Working);
+            if (!reviver.EnsureServer()) { Set(L("adb를 찾을 수 없어요.", "adb not found."), Kind.Error); return false; }
+            Set(L("페어링 중… ", "Pairing… ") + address, Kind.Working);
             var r = Shell.Run(reviver.Adb, $"pair {address} {secret}", 30000);
-            Log.Write($"페어링 {address}: {r.output}");
-            if (!r.output.Contains("Successfully paired")) { Set("페어링 실패: " + r.output, Kind.Error); return false; }
-            Set("페어링 완료! 연결하는 중…", Kind.Working);
+            Log.Write(L("페어링 ", "Pairing ") + $"{address}: {r.output}");
+            if (!r.output.Contains("Successfully paired")) { Set(L("페어링 실패: ", "Pairing failed: ") + r.output, Kind.Error); return false; }
+            Set(L("페어링 완료! 연결하는 중…", "Paired! Connecting…"), Kind.Working);
             var ok = Shell.WaitUntil(15, () => reviver.Connected() != null);
             if (!ok)
             {
@@ -130,10 +131,10 @@ namespace WirelessAdbReconnect
             if (ok)
             {
                 Succeeded = true;
-                Set("연결됐어요", Kind.Success);
+                Set(L("연결됐어요", "Connected"), Kind.Success);
                 Dispatcher.BeginInvoke((Action)(() => Paired?.Invoke()));
             }
-            else Set("페어링은 됐지만 아직 연결되지 않았어요. 트레이 메뉴의 '지금 다시 붙이기'를 눌러 주세요.", Kind.Error);
+            else Set(L("페어링은 됐지만 아직 연결되지 않았어요. 트레이 메뉴의 '지금 다시 붙이기'를 눌러 주세요.", "Paired, but not connected yet. Choose 'Reconnect now' in the tray menu."), Kind.Error);
             return true;
         }
 

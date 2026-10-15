@@ -42,14 +42,15 @@ Android 11부터 생긴 **무선 디버깅**은 편하지만 자주 끊깁니다
 - **가볍고 네이티브**
   - macOS 13+: Swift / SwiftUI, 서명·공증 완료
   - Windows 10/11: `.exe` 하나(약 0.5MB), 기본 내장 .NET Framework 4.8, **x64·ARM64**
+- **언어 자동** — OS가 한국어면 한국어, 그 밖의 언어는 영어로 표시됩니다.
 
 ## 화면
 
 | macOS | Windows |
 |---|---|
-| ![macOS 설치 — adb](docs/images/mac-setup-1.png) | ![Windows 설치 — adb](docs/images/windows-setup-1.png) |
-| ![macOS 설치 — QR 페어링](docs/images/mac-setup-3.png) | ![Windows 설치 — QR 페어링](docs/images/windows-setup-3.png) |
-| ![macOS 설치 — 연결됨](docs/images/mac-setup-4.png) | ![Windows 설치 — 연결됨](docs/images/windows-setup-4.png) |
+| ![macOS 설치 — adb](docs/images/mac-ko-setup-1.png) | ![Windows 설치 — adb](docs/images/windows-ko-setup-1.png) |
+| ![macOS 설치 — QR 페어링](docs/images/mac-ko-setup-3.png) | ![Windows 설치 — QR 페어링](docs/images/windows-ko-setup-3.png) |
+| ![macOS 설치 — 연결됨](docs/images/mac-ko-setup-4.png) | ![Windows 설치 — 연결됨](docs/images/windows-ko-setup-4.png) |
 
 ## 설치
 

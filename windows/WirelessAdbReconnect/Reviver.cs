@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using static WirelessAdbReconnect.Lang;
 
 namespace WirelessAdbReconnect
 {
@@ -65,10 +66,10 @@ namespace WirelessAdbReconnect
         {
             switch (s)
             {
-                case Strategy.ReconnectOffline: return "offline 기기 재연결";
-                case Strategy.ConnectOnly: return "서버 유지 + IP:포트 직접 연결";
-                case Strategy.OwnServer: return "앱이 adb 서버 재시작";
-                default: return "앱이 adb 서버 재시작 (openscreen mDNS)";
+                case Strategy.ReconnectOffline: return L("offline 기기 재연결", "Reconnect offline device");
+                case Strategy.ConnectOnly: return L("서버 유지 + IP:포트 직접 연결", "Keep server, connect to IP:port");
+                case Strategy.OwnServer: return L("앱이 adb 서버 재시작", "Restart adb server (owned by app)");
+                default: return L("앱이 adb 서버 재시작 (openscreen mDNS)", "Restart adb server (openscreen mDNS)");
             }
         }
 
@@ -91,7 +92,7 @@ namespace WirelessAdbReconnect
             var list = new List<Device>();
             if (Adb == null || !Shell.PortOpen()) return list;
             var o = Shell.Run(Adb, "devices -l", 6000).output;
-            if (o.Contains("doesn't match this client")) AddCause("adb 버전 불일치 → 다른 adb(Android Studio·scrcpy 등)가 서버를 띄움");
+            if (o.Contains("doesn't match this client")) AddCause(L("adb 버전 불일치 → 다른 adb(Android Studio·scrcpy 등)가 서버를 띄움", "adb version mismatch → another adb (Android Studio, scrcpy, etc.) started the server"));
             foreach (var line in o.Split('\n').Skip(1))
             {
                 var f = line.Split(new[] { ' ', '\t', '\r' }, StringSplitOptions.RemoveEmptyEntries);
@@ -147,7 +148,7 @@ namespace WirelessAdbReconnect
                 if (causes.Contains(c)) return;
                 if (first) causes.Insert(0, c); else causes.Add(c);
             }
-            Log.Write("  원인 후보: " + c);
+            Log.Write(L("  원인 후보: ", "  Possible cause: ") + c);
         }
 
         // ---------- 메인 루틴 ----------
@@ -156,32 +157,32 @@ namespace WirelessAdbReconnect
         {
             lock (gate)
             {
-                Log.Write("===== 다시 붙이기 시작");
+                Log.Write(L("===== 다시 붙이기 시작", "===== Reconnect started"));
                 lock (causes) causes.Clear();
                 RefreshAdb();
-                if (Adb == null) return Finish(false, "adb를 찾을 수 없습니다. 설치 화면에서 adb를 설치하세요.");
-                Log.Write("진단: adb = " + Adb);
+                if (Adb == null) return Finish(false, L("adb를 찾을 수 없어요. 설정에서 adb를 설치해 주세요.", "adb not found. Install it from Settings."));
+                Log.Write(L("진단: adb = ", "Diagnosis: adb = ") + Adb);
 
                 // 1) 진단
                 var before = Devices();
-                Log.Write("진단: 기기 = " + string.Join(", ", before.Select(d => $"{d.Serial}({d.State})")));
+                Log.Write(L("진단: 기기 = ", "Diagnosis: devices = ") + string.Join(", ", before.Select(d => $"{d.Serial}({d.State})")));
                 var already = before.FirstOrDefault(d => d.State == "device" && d.IsWireless);
-                if (already != null) return Finish(true, "이미 연결되어 있습니다: " + already.Serial);
+                if (already != null) return Finish(true, L("이미 연결되어 있어요: ", "Already connected: ") + already.Serial);
 
                 var owner = ServerOwner();
                 var owns = OwnsServer();
-                if (owner == null) Log.Write("진단: adb 서버 꺼져 있음");
+                if (owner == null) Log.Write(L("진단: adb 서버 꺼져 있음", "Diagnosis: adb server not running"));
                 else
                 {
-                    Log.Write("진단: adb 서버 = " + (owns ? "이 앱" : owner.Value.path));
+                    Log.Write(L("진단: adb 서버 = ", "Diagnosis: adb server = ") + (owns ? L("이 앱", "this app") : owner.Value.path));
                     if (!owns && !string.Equals(owner.Value.path, Adb, StringComparison.OrdinalIgnoreCase))
-                        AddCause($"다른 adb({owner.Value.path})가 서버를 띄움 → 버전이 다르면 서로 서버를 죽여 연결이 끊김 (Android Studio·scrcpy 등)");
+                        AddCause(L($"다른 adb({owner.Value.path})가 서버를 띄움 → 버전이 다르면 서로 서버를 죽여 연결이 끊김 (Android Studio·scrcpy 등)", $"Another adb ({owner.Value.path}) started the server → different versions kill each other's server (Android Studio, scrcpy, etc.)"));
                 }
-                if (before.Any(d => d.State == "offline")) AddCause("기기가 offline 상태로 남아 있음");
-                if (before.Any(d => d.State == "unauthorized")) AddCause("휴대폰에서 디버깅 허용 필요 (unauthorized)");
+                if (before.Any(d => d.State == "offline")) AddCause(L("기기가 offline 상태로 남아 있음", "Device is stuck offline"));
+                if (before.Any(d => d.State == "unauthorized")) AddCause(L("휴대폰에서 디버깅 허용 필요 (unauthorized)", "Allow debugging on the phone (unauthorized)"));
 
                 var phone = owns ? PhoneAddr() : null;
-                if (phone != null) { Log.Write("진단: 휴대폰 = " + phone); LastAddr = phone; }
+                if (phone != null) { Log.Write(L("진단: 휴대폰 = ", "Diagnosis: phone = ") + phone); LastAddr = phone; }
 
                 // 2) 시도 순서: 끊지 않는 방법 → 기억한 방법 → 나머지
                 var order = new List<Strategy>();
@@ -192,34 +193,34 @@ namespace WirelessAdbReconnect
                 order.Add(Strategy.OwnServerOpenscreen);
                 var w = Winner;
                 if (w.HasValue && order.IndexOf(w.Value) > quick) { order.Remove(w.Value); order.Insert(quick, w.Value); }
-                Log.Write("시도 순서: " + string.Join(" → ", order.Select(Title)));
+                Log.Write(L("시도 순서: ", "Order: ") + string.Join(" → ", order.Select(Title)));
 
                 // 3) 순서대로 시도, 붙으면 종료
                 foreach (var s in order)
                 {
-                    Log.Write("▶ 시도: " + Title(s));
+                    Log.Write(L("▶ 시도: ", "▶ Trying: ") + Title(s));
                     if (Attempt(s))
                     {
                         Winner = s;
                         var d = Connected();
                         if (d != null && d.IsIPPort) LastAddr = d.Serial;
-                        return Finish(true, "다시 붙었습니다 — " + Title(s));
+                        return Finish(true, L("다시 붙었어요 — ", "Reconnected — ") + Title(s));
                     }
-                    Log.Write("  실패: " + Title(s));
+                    Log.Write(L("  실패: ", "  Failed: ") + Title(s));
                 }
 
                 DiagnoseNetwork();
                 string top;
-                lock (causes) top = causes.FirstOrDefault() ?? "원인 불명";
-                return Finish(false, top + " (눌러서 진단 로그 보기)");
+                lock (causes) top = causes.FirstOrDefault() ?? L("원인을 찾지 못했어요", "Unknown cause");
+                return Finish(false, top + L(" (눌러서 진단 보기)", " (click for diagnostics)"));
             }
         }
 
         (bool, string) Finish(bool ok, string msg)
         {
             lock (causes)
-                if (!ok && causes.Count > 1) Log.Write("원인 후보 전체:\r\n  - " + string.Join("\r\n  - ", causes));
-            Log.Write("결과: " + msg);
+                if (!ok && causes.Count > 1) Log.Write(L("원인 후보 전체:", "All possible causes:") + "\r\n  - " + string.Join("\r\n  - ", causes));
+            Log.Write(L("결과: ", "Result: ") + msg);
             return (ok, msg);
         }
 
@@ -230,19 +231,19 @@ namespace WirelessAdbReconnect
             if (phone == null)
             {
                 var profile = Shell.Run("powershell", "-NoProfile -Command \"(Get-NetConnectionProfile | ForEach-Object { $_.InterfaceAlias + '=' + $_.NetworkCategory }) -join ', '\"", 10000).output;
-                Log.Write("진단: 네트워크 프로필 = " + profile);
+                Log.Write(L("진단: 네트워크 프로필 = ", "Diagnosis: network profile = ") + profile);
                 if (profile.Contains("Public"))
-                    AddCause("네트워크가 '공용'으로 설정됨 → mDNS가 막혀 휴대폰을 못 찾음. 설정 > 네트워크 > 속성에서 '개인'으로 바꾸세요", true);
-                AddCause("휴대폰이 보이지 않음 → 휴대폰 무선 디버깅 꺼짐 / 화면 꺼짐·절전 / 다른 Wi‑Fi, 또는 방화벽이 mDNS(UDP 5353)를 막음", true);
+                    AddCause(L("네트워크가 '공용'으로 설정됨 → mDNS가 막혀 휴대폰을 못 찾음. 설정 > 네트워크 > 속성에서 '개인'으로 바꾸세요", "Network is set to Public → mDNS is blocked. Change it to Private in Settings > Network > Properties"), true);
+                AddCause(L("휴대폰이 보이지 않음 → 휴대폰 무선 디버깅 꺼짐 / 화면 꺼짐·절전 / 다른 Wi‑Fi, 또는 방화벽이 mDNS(UDP 5353)를 막음", "Phone not visible → wireless debugging off / screen off or power saving / different Wi‑Fi, or a firewall blocks mDNS (UDP 5353)"), true);
             }
             else if (!Shell.TcpReachable(phone))
             {
-                AddCause($"휴대폰({phone})은 보이지만 접속 안 됨 → 방화벽·VPN·다른 네트워크 확인", true);
+                AddCause(L($"휴대폰({phone})은 보이지만 접속 안 됨 → 방화벽·VPN·다른 네트워크 확인", $"Phone ({phone}) is visible but unreachable → check firewall, VPN, network"), true);
             }
             else
             {
                 // 보이고 접속도 되는데 adb가 거부 → 이 PC가 휴대폰과 페어링되지 않은 경우가 대부분
-                AddCause($"휴대폰({phone})은 보이고 네트워크도 정상이지만 adb 연결이 거부됨 → 이 PC와 페어링이 안 됨. 트레이 메뉴 '휴대폰 페어링 (QR)'으로 페어링하세요", true);
+                AddCause(L($"휴대폰({phone})은 보이고 네트워크도 정상이지만 adb 연결이 거부됨 → 이 PC와 페어링이 안 됨. 트레이 메뉴 '휴대폰 페어링'으로 페어링하세요", $"Phone ({phone}) is reachable but adb refused → this PC isn't paired. Use 'Pair phone' in the tray menu"), true);
             }
         }
 
@@ -261,7 +262,7 @@ namespace WirelessAdbReconnect
                     if (!StartOwnServer(env)) return false;
                     if (Shell.WaitUntil(10, () => Connected() != null)) return true;
                     var phone = PhoneAddr();
-                    Log.Write("  mDNS 휴대폰 = " + (phone ?? "없음"));
+                    Log.Write(L("  mDNS 휴대폰 = ", "  mDNS phone = ") + (phone ?? L("없음", "none")));
                     return ConnectCandidates(phone);
             }
         }
@@ -274,10 +275,10 @@ namespace WirelessAdbReconnect
                 var o = Shell.Run(Adb, "connect " + a, 12000).output;
                 Log.Write($"  adb connect {a}: {o}");
                 var l = o.ToLowerInvariant();
-                if (l.Contains("connection refused") || l.Contains("actively refused")) AddCause("Connection refused → 무선 디버깅 포트가 바뀌었거나 꺼짐");
-                if (l.Contains("authenticat")) AddCause("인증 실패 → 이 PC와 페어링이 안 됨. 트레이 메뉴 '휴대폰 페어링'으로 다시 페어링");
-                if (l.Contains("timed out") || l.Contains("did not properly respond")) AddCause("시간 초과 → 휴대폰 절전 / 다른 Wi‑Fi / VPN 경로");
-                if (l.Contains("no route") || l.Contains("unreachable")) AddCause("경로 없음 → 휴대폰과 PC가 다른 네트워크");
+                if (l.Contains("connection refused") || l.Contains("actively refused")) AddCause(L("Connection refused → 무선 디버깅 포트가 바뀌었거나 꺼짐", "Connection refused → wireless debugging port changed or turned off"));
+                if (l.Contains("authenticat")) AddCause(L("인증 실패 → 이 PC와 페어링이 안 됨. 트레이 메뉴 '휴대폰 페어링'으로 다시 페어링", "Authentication failed → this PC isn't paired. Use 'Pair phone' in the tray menu"));
+                if (l.Contains("timed out") || l.Contains("did not properly respond")) AddCause(L("시간 초과 → 휴대폰 절전 / 다른 Wi‑Fi / VPN 경로", "Timed out → phone asleep / different Wi‑Fi / VPN route"));
+                if (l.Contains("no route") || l.Contains("unreachable")) AddCause(L("경로 없음 → 휴대폰과 PC가 다른 네트워크", "No route → phone and PC are on different networks"));
                 if (Shell.WaitUntil(3, () => Connected() != null)) return true;
             }
             return false;
@@ -295,7 +296,7 @@ namespace WirelessAdbReconnect
                 var o = ServerOwner();
                 if (o != null)
                 {
-                    Log.Write($"  서버가 안 꺼져서 강제 종료: pid {o.Value.pid} ({o.Value.path})");
+                    Log.Write(L("  서버가 안 꺼져서 강제 종료: ", "  Server did not stop, killing: ") + $"pid {o.Value.pid} ({o.Value.path})");
                     try { Process.GetProcessById(o.Value.pid).Kill(); } catch { }
                     Shell.WaitUntil(3, () => !Shell.PortOpen());
                 }
@@ -320,7 +321,7 @@ namespace WirelessAdbReconnect
             };
             p.OutputDataReceived += sink;
             p.ErrorDataReceived += sink;
-            p.Exited += (s, e) => Log.Write("  (앱의 adb 서버 종료)");
+            p.Exited += (s, e) => Log.Write(L("  (앱의 adb 서버 종료)", "  (app's adb server exited)"));
             try
             {
                 Directory.CreateDirectory(Paths.Data);
@@ -330,12 +331,12 @@ namespace WirelessAdbReconnect
             }
             catch (Exception e)
             {
-                Log.Write("  서버 실행 실패: " + e.Message);
+                Log.Write(L("  서버 실행 실패: ", "  Failed to start server: ") + e.Message);
                 return false;
             }
             server = p;
             var ok = Shell.WaitUntil(5, () => Shell.PortOpen());
-            Log.Write($"  앱 소유 서버 시작 pid {p.Id}{(env == null ? "" : " " + string.Join(",", env.Select(kv => kv.Key + "=" + kv.Value)))} → {(ok ? "OK" : "포트 안 열림")}");
+            Log.Write(L("  앱 소유 서버 시작 pid ", "  Started app-owned server pid ") + $"{p.Id}{(env == null ? "" : " " + string.Join(",", env.Select(kv => kv.Key + "=" + kv.Value)))} → " + (ok ? "OK" : L("포트 안 열림", "port not open")));
             return ok;
         }
 

@@ -43,15 +43,15 @@ The usual fix is `adb kill-server`, start it again, look up the new IP:port, `ad
   - macOS 13+: Swift / SwiftUI, signed & notarized
   - Windows 10/11: single `.exe` (~0.5 MB) on built-in .NET Framework 4.8, **x64 and ARM64**
 
-> The UI is currently in Korean. English UI is planned — contributions welcome.
+> The UI follows your OS language: **Korean** on Korean systems, **English** everywhere else.
 
 ## Screenshots
 
 | macOS | Windows |
 |---|---|
-| ![macOS setup — adb](docs/images/mac-setup-1.png) | ![Windows setup — adb](docs/images/windows-setup-1.png) |
-| ![macOS setup — QR pairing](docs/images/mac-setup-3.png) | ![Windows setup — QR pairing](docs/images/windows-setup-3.png) |
-| ![macOS setup — connected](docs/images/mac-setup-4.png) | ![Windows setup — connected](docs/images/windows-setup-4.png) |
+| ![macOS setup — adb](docs/images/mac-en-setup-1.png) | ![Windows setup — adb](docs/images/windows-en-setup-1.png) |
+| ![macOS setup — QR pairing](docs/images/mac-en-setup-3.png) | ![Windows setup — QR pairing](docs/images/windows-en-setup-3.png) |
+| ![macOS setup — connected](docs/images/mac-en-setup-4.png) | ![Windows setup — connected](docs/images/windows-en-setup-4.png) |
 
 ## Install
 
