@@ -52,7 +52,8 @@
 - 저장소: https://github.com/da-itda/wireless-adb-reconnect (공개, MIT) · 릴리스 v1.0.0 (Mac Universal 공증 zip, Windows exe, SHA256SUMS)
 - **공개 히스토리는 로컬 `main`과 별개**: 로컬 `public` 브랜치 = `origin/main`. 로컬 `main`(개인 정보가 남은 개발 기록)은 푸시하지 않는다.
 - 다음 공개 방법: `git commit-tree "HEAD^{tree}" -p public -m "<메시지>"` → `git branch -f public <커밋>` → `git push origin public:main` (푸시는 사용자 요청 때만)
-- 다음 후보: 영어 UI(영어·한국어 자동 전환), Windows 코드 서명, Mac 기본 알림 원인 분리
+- v1.1.0 (2026-10-15): OS 언어 자동 — 한국어 OS는 한국어, 그 밖은 영어 (Mac `L()`·Windows `L()`/XAML `{local:T}`, 강제는 `WAR_LANG=ko|en`). README 언어별 스크린샷
+- 다음 후보: Windows 코드 서명, Mac 기본 알림 원인 분리, 홍보 글
 
 ## 리스크
 - ad-hoc 서명 앱은 다시 빌드하면 로컬 네트워크 권한을 다시 물을 수 있음

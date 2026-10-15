@@ -3,6 +3,7 @@
 #
 #   tools/windows_pc.sh sync            # windows/ assets/ → PC Documents\wireless-adb-sync
 #   tools/windows_pc.sh build           # PC에서 dotnet build → dist/windows/WirelessADBReconnect.exe 로 받아옴
+#   tools/windows_pc.sh sign            # 빌드한 exe를 코드 서명 (바탕화면 세션, PC에서 토큰 PIN 입력) → 받아옴
 #   tools/windows_pc.sh run <인자...>   # PC 세션 0에서 빌드한 exe 실행 (창 없음, 출력만)
 #   tools/windows_pc.sh desktop <분> < script.ps1   # 로그인된 바탕화면 세션에서 PowerShell 실행
 #   tools/windows_pc.sh ps < script.ps1 # 세션 0에서 PowerShell 실행
@@ -70,6 +71,19 @@ case "${1:-}" in
 Set-Location '$DEV'
 dotnet build windows\WirelessAdbReconnect\WirelessAdbReconnect.csproj -c Release -nologo -v:q 2>&1 | Select-Object -Last 15
 "build exit=\$LASTEXITCODE"
+PS
+    mkdir -p "$ROOT/dist/windows"
+    scp -q -o BatchMode=yes "$PC:${EXE//\\//}" "$ROOT/dist/windows/WirelessADBReconnect.exe" && echo "받음: dist/windows/WirelessADBReconnect.exe"
+    ;;
+  sign)
+    THUMB="${WINDOWS_SIGN_THUMBPRINT:?tools/windows_pc.env 에 WINDOWS_SIGN_THUMBPRINT 를 설정하세요}"
+    echo "PC 화면에 토큰 PIN 창이 뜨면 입력하세요 (최대 5분 대기)"
+    desktop 5 <<PS
+\$cert = @(Get-ChildItem Cert:\CurrentUser\My, Cert:\LocalMachine\My | Where-Object { \$_.Thumbprint -eq '$THUMB' })[0]
+if (-not \$cert) { 'ERROR: 인증서 없음'; return }
+\$r = Set-AuthenticodeSignature -FilePath '$EXE' -Certificate \$cert -HashAlgorithm SHA256 -TimestampServer 'http://timestamp.digicert.com'
+\$c = Get-AuthenticodeSignature -FilePath '$EXE'
+"서명: \$(\$c.Status) / \$(\$c.SignerCertificate.Subject.Split(',')[0]) / 타임스탬프: \$([bool]\$c.TimeStamperCertificate)"
 PS
     mkdir -p "$ROOT/dist/windows"
     scp -q -o BatchMode=yes "$PC:${EXE//\\//}" "$ROOT/dist/windows/WirelessADBReconnect.exe" && echo "받음: dist/windows/WirelessADBReconnect.exe"

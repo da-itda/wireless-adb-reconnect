@@ -16,7 +16,7 @@
     <Product>Wireless ADB Reconnect</Product>
     <AssemblyTitle>Wireless ADB Reconnect</AssemblyTitle>
     <Description>Wireless ADB Reconnect</Description>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 

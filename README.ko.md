@@ -41,7 +41,7 @@ Android 11부터 생긴 **무선 디버깅**은 편하지만 자주 끊깁니다
 - **설치 마법사** — adb가 없으면 Google 공식 **platform-tools(약 15MB)** 설치(또는 Android Studio), 앱 설치, 로그인 시 자동 실행. 이미 된 단계는 건너뜁니다.
 - **가볍고 네이티브**
   - macOS 13+: Swift / SwiftUI, 서명·공증 완료
-  - Windows 10/11: `.exe` 하나(약 0.5MB), 기본 내장 .NET Framework 4.8, **x64·ARM64**
+  - Windows 10/11: 서명된 `.exe` 하나(약 0.5MB), 기본 내장 .NET Framework 4.8, **x64·ARM64**
 - **언어 자동** — OS가 한국어면 한국어, 그 밖의 언어는 영어로 표시됩니다.
 
 ## 화면
@@ -62,8 +62,7 @@ Android 11부터 생긴 **무선 디버깅**은 편하지만 자주 끊깁니다
 3. **로컬 네트워크** 허용 창이 뜨면 허용합니다 (휴대폰에 접속하는 데 필요).
 
 ### Windows (10 / 11, x64·ARM64)
-1. `WirelessADBReconnect-x.y.z-windows.exe`를 실행합니다.
-   아직 코드 서명이 없어 SmartScreen 경고가 뜰 수 있습니다: **추가 정보 → 실행**.
+1. `WirelessADBReconnect-x.y.z-windows.exe`를 실행합니다 (EV 인증서로 코드 서명, 게시자 **LaonCross Inc.**).
 2. 마법사를 따라 설치 → `%LOCALAPPDATA%\Programs\Wireless ADB Reconnect`, 시작 메뉴, 바탕화면 바로가기(선택), 로그인 시 자동 실행
 3. 제거: **설정 → 앱**
 

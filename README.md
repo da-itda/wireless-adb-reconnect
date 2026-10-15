@@ -41,7 +41,7 @@ The usual fix is `adb kill-server`, start it again, look up the new IP:port, `ad
 - **Setup wizard** — installs Google's official **platform-tools (~15 MB)** if adb is missing (or Android Studio, if you prefer), installs the app, sets launch-at-login. Steps already done are skipped.
 - **Native and tiny**
   - macOS 13+: Swift / SwiftUI, signed & notarized
-  - Windows 10/11: single `.exe` (~0.5 MB) on built-in .NET Framework 4.8, **x64 and ARM64**
+  - Windows 10/11: single signed `.exe` (~0.5 MB) on built-in .NET Framework 4.8, **x64 and ARM64**
 
 > The UI follows your OS language: **Korean** on Korean systems, **English** everywhere else.
 
@@ -63,8 +63,7 @@ Download from [**Releases**](../../releases/latest).
 3. Allow **Local Network** when asked (needed to reach your phone).
 
 ### Windows (10 / 11, x64 or ARM64)
-1. Run `WirelessADBReconnect-x.y.z-windows.exe`.
-   The exe is not code-signed yet, so SmartScreen may warn: **More info → Run anyway**.
+1. Run `WirelessADBReconnect-x.y.z-windows.exe` (code-signed with an EV certificate, publisher **LaonCross Inc.**).
 2. Follow the wizard → installs to `%LOCALAPPDATA%\Programs\Wireless ADB Reconnect`, Start menu, optional desktop shortcut and launch at login.
 3. Uninstall from **Settings → Apps**.
 
