@@ -48,14 +48,70 @@
 - [x] 4. 실제 테스트 (Mac·PC, 이전 ADB Revive 제거 후 새로 설치) — 10% (2026-10-15 Mac 새 설치·옮기기·로그인 항목·연결, PC 설치·옛 앱 정리·연결 OK. Mac 기본 알림은 미해결 → TROUBLESHOOTING)
 - [x] 5. 문서(README 영어·한글), 커밋 — 5%
 
+### 4차 — 화면 미러링(scrcpy) 흡수 (2026-10-15~)
+배경: `Projects/itda-android-phone/무선디버깅.app`(AppleScript + run.bash, 4월 작성)은 IP:포트를 손으로 넣고 `adb kill-server` → `adb connect` → scrcpy를 띄우는 스크립트. 이 앱이 띄운 서버를 죽여 무선 연결이 끊기는 충돌이 있었다.
+결정 (2026-10-15 사용자): **A안** — 미러링을 이 앱(Mac)의 기능으로 흡수. 스크립트 앱은 `_archive/`로. 폴더 이름 `sub-project/adb-wireless` → `Projects/itda-wireless-adb-reconnect`.
+원칙: scrcpy는 이 앱이 소유한 adb 서버를 그대로 쓴다 (`ADB=<앱이 찾은 adb>` 환경변수로 실행 → 버전 불일치로 서버가 죽는 일 없음). 기기는 앱이 알고 있는 무선 serial로 `-s` 지정 (USB 동시 연결 시에도 무선으로).
+이번 범위 밖: Windows 미러링 (다음 후보), scrcpy 번들 배포(크기·라이선스 — Homebrew 설치 안내로 대체).
+
+- [x] 1. 폴더 이름 변경 (`itda-wireless-adb-reconnect`) — 5%
+- [x] 2. `mac/Mirror.swift`: scrcpy 찾기(`/opt/homebrew/bin`, `/usr/local/bin`, 설정 경로) · 실행(자식 Process, `ADB` env, `-s`, 옵션) · 상태 추적(실행 중/종료 코드) · 앱 종료 시 함께 종료 — 30%
+- [x] 3. 메뉴: "화면 미러링 시작/중지" (⌘M). 끊겨 있으면 먼저 다시 붙인 뒤 실행. 옵션 서브메뉴(화질 6M/12M, 소리 켬/끔, 항상 위, 폰 화면 끄기, 녹화 폴더) — UserDefaults 저장 — 20%
+- [x] 4. 설치 마법사: "화면 미러링" 단계 추가 (4/4, 선택) (있으면 건너뜀, Homebrew 있으면 `brew install scrcpy` 실행, 없으면 안내·다시 확인) — 15%
+- [x] 5. 실제 테스트 — 15% (2026-10-15 /Applications에 1.2.0 설치 후 메뉴로: USB+무선 동시 연결에서 무선 serial로 미러링 OK, 중지 후 adb 서버 pid·무선 유지 OK, `adb disconnect` 뒤 ⌘M → "서버 유지 + IP:포트 직접 연결"로 붙고 미러링 OK, 미러링 중 끊기면 코드 2로 종료 감지 OK)
+- [x] 6. 옛 스크립트 앱 `_archive/무선디버깅.app`으로 이동, 문서(README 영어·한글, TROUBLESHOOTING), 버전 1.2.0, 커밋 — 15%
+- 다음 후보: 미러링 중 끊기면 자동 재연결·재시작, `--mirror` 실행 인자(Raycast 등 단축키용), Windows 미러링, 공개 릴리스 v1.2.0 (공증 zip)
+
+수정 파일: `mac/Mirror.swift`(신규), `mac/main.swift`(메뉴·종료), `mac/Setup.swift`(마법사 단계), `mac/build_app.sh`(파일 추가·버전), README 2종, docs 2종.
+
+리스크
+- scrcpy가 다른 adb(Homebrew)를 쓰면 서버를 죽임 → `ADB` env로 앱의 adb를 강제. 그래도 죽으면 앱이 재시작 루틴으로 복구.
+- Homebrew가 없는 사용자는 scrcpy 자동 설치 불가 → 안내만.
+- 미러링 중 무선이 끊기면 scrcpy가 종료됨 → 종료 코드로 감지해 알림(자동 재시작은 옵션으로, 1차는 알림만).
+- 앱을 종료하면 scrcpy도 종료됨 (adb 서버와 같음).
+
+### 5차 — Windows 미러링 + 설치 2단계에서 scrcpy 함께 설치 (2026-10-15~)
+결정 (2026-10-15 사용자): Windows도 미러링. scrcpy 설치는 별도 4단계가 아니라 **2단계(앱 설치)에서 "화면 미러링(scrcpy)도 설치" 스위치**로 묻는다 (Mac·Windows 공통). Mac의 4단계 '화면 미러링'은 없앤다.
+Windows scrcpy 설치 방법: GitHub 릴리스 zip(`scrcpy-win64-v5.0.1.zip` 약 11MB, ARM64 PC는 `winarm64`)을 받아 `%LOCALAPPDATA%\Wireless ADB Reconnect\scrcpy\`에 푼다 — platform-tools와 같은 방식(관리자 권한·winget 불필요, 앱이 위치를 앎). 버전은 상수로 고정, 올릴 때 갱신.
+미러링 원칙은 Mac과 같다: `ADB=<앱 adb>` 환경변수 + `-s <무선 serial>`. 콘솔 창 없이 실행(CreateNoWindow), SDL 창만 보임.
+
+- [x] 1. Windows `Mirror.cs`: scrcpy 찾기(앱 폴더 → PATH → Programs\scrcpy → winget 폴더) · zip 설치(진행률) · 실행(ADB env, -s, 옵션) · 중지 · 종료 감지 — 25%
+- [x] 2. Windows 트레이: "화면 미러링 시작/중지", "미러링 옵션"(화질·소리·항상 위·화면 끄기·녹화 Videos 폴더), 끊겨 있으면 먼저 재연결, 끊김 알림. `--mirror` 실행 인자(바로가기·테스트용: 실행 중이면 신호만 보냄) — 15%
+- [x] 3. 마법사 2단계 스위치 "화면 미러링(scrcpy)도 설치": Windows(XAML + 설치 때 zip 받기) 10% · Mac(InstallStep 스위치, Homebrew 없으면 비활성 안내, 설치 후 옮기기; 4단계 제거) 15% — 25%
+- [x] 4. 빌드·실제 테스트 — 25% (2026-10-15 PC: `--install-scrcpy`로 zip 설치 OK, 1.2.0 설치 후 `--mirror` → 미러링(D3D11) OK, 다시 `--mirror` → 중지(코드 0 사용자 중지), 서버 pid·기기 유지 OK, 마법사 2단계 스냅샷 OK. Mac: 재빌드·설치, 메뉴 시작/중지 OK, 스냅샷 OK. Mac·PC 동시 미러링 2분 이상 OK. 미검증: Mac에서 Homebrew로 scrcpy 설치 경로(이미 설치돼 있어 스위치 비활성), Windows EV 서명은 사용자 PIN 필요)
+- [x] 5. 문서(README 2종, TROUBLESHOOTING), 버전 1.2.0(Windows도), 커밋 — 10%
+- 다음 후보: 미러링 중 끊기면 자동 재연결·재시작, Mac `--mirror`(URL 스킴 등), 공개 릴리스 v1.2.0 (Mac 공증 zip + Windows 서명 exe)
+
+수정 파일: `windows/.../Mirror.cs`(신규), `TrayApp.cs`, `Program.cs`, `SetupWindow.xaml(.cs)`, `Installer.cs`(zip 받기 공통화), `Common.cs`(경로), `.csproj`(버전); `mac/Setup.swift`, `mac/Mirror.swift`(설치 콜백), `mac/main.swift`(설정 열기 단계).
+
+리스크
+- Windows scrcpy zip에 adb.exe가 함께 들어 있음 → PATH에 넣지 않고 `ADB` env로 앱 adb를 강제하므로 충돌 없음.
+- ARM64 Windows: `winarm64` zip 사용 (x64 에뮬레이션 불필요). 아키텍처 판별은 `RuntimeInformation.OSArchitecture`.
+- 테스트 PC에서 미러링을 띄우면 실제 휴대폰 화면이 PC에 뜸 (Mac과 동시 미러링은 scrcpy 서버가 기기당 여러 개 가능하므로 문제없을 것으로 예상, 실제 확인).
+- Mac 2단계에서 brew 설치는 1~5분 → 진행 메시지 표시, 끝나면 옮기기 진행.
+
+### 6차 — 새 아이콘(안드로이드 + 전파) + v1.2.0 공개 (2026-10-22)
+결정 (2026-10-22 사용자): 앱 아이콘 = 녹색 전파 심볼. 상태는 **회색 = 연결됨, 빨강 = 끊김** (초록은 실제 메뉴 막대·작업 표시줄에서 잘 안 보임).
+검토 반영: 심볼 몸체가 검정이라 어두운 메뉴 막대·작업 표시줄에서 사라짐 → 몸체는 배경 밝기에 맞춰 검정/흰색, 전파만 상태색(회색은 어두운 배경에서 더 밝은 회색 `#A0A0A0`). 다시 붙이는 중(Mac)은 기존대로 주황.
+원본: `assets/symbol-{green,gray,red}.png` → `assets/make_icons.sh`로 모든 아이콘 생성 (앱 아이콘 = 흰 둥근 사각형 + 녹색 심볼, Mac 메뉴 막대 마스크 2장, Windows 트레이 ico 4종).
+- [x] 1. 아이콘 생성 스크립트·리소스 — 20%
+- [x] 2. Mac: 메뉴 막대 아이콘(마스크 + 글자색/상태색), 메뉴 헤더 점 회색, 안내 문구, 스냅샷에 메뉴 막대 아이콘 — 15%
+- [x] 3. Windows: 트레이 ico 4종(작업 표시줄 밝기 `SystemUsesLightTheme`, 테마 바꾸면 즉시 반영), 안내 문구 — 15%
+- [x] 4. 빌드·확인 (Mac 빌드·스냅샷, PC 빌드·스냅샷·트레이 ico 렌더), README 스크린샷 교체 — 20%
+- [x] 5. 문서, 커밋, 옛 아이콘 `_archive/old-icons-2026-10-22` — 10%
+- [ ] 6. 배포: Mac 공증 zip, Windows EV 서명 exe, 개인정보 검사, `public` 푸시, 릴리스 v1.2.0 — 20%
+
 ### 공개 (2026-10-15)
 - 저장소: https://github.com/da-itda/wireless-adb-reconnect (공개, MIT) · 릴리스 v1.0.0 (Mac Universal 공증 zip, Windows exe, SHA256SUMS)
 - **공개 히스토리는 로컬 `main`과 별개**: 로컬 `public` 브랜치 = `origin/main`. 로컬 `main`(개인 정보가 남은 개발 기록)은 푸시하지 않는다.
 - 다음 공개 방법: `git commit-tree "HEAD^{tree}" -p public -m "<메시지>"` → `git branch -f public <커밋>` → `git push origin public:main` (푸시는 사용자 요청 때만)
 - v1.1.0 (2026-10-15): OS 언어 자동 — 한국어 OS는 한국어, 그 밖은 영어 (Mac `L()`·Windows `L()`/XAML `{local:T}`, 강제는 `WAR_LANG=ko|en`). README 언어별 스크린샷
-- 다음 후보: Windows 코드 서명, Mac 기본 알림 원인 분리, 홍보 글
+- v1.1.1 (2026-10-15): Windows EV 코드 서명(게시자 LaonCross Inc., 타임스탬프) — `tools/windows_pc.sh build && tools/windows_pc.sh sign` (PC에서 토큰 PIN). Mac 재공증
+- 공개 전 개인정보 검사 → 통과할 때만 푸시
+- 다음 후보: Mac 기본 알림 원인 분리, 홍보 글
 
 ## 리스크
 - ad-hoc 서명 앱은 다시 빌드하면 로컬 네트워크 권한을 다시 물을 수 있음
 - 앱을 종료하면 앱이 띄운 adb 서버도 종료됨 (메뉴 막대에 상주)
-- Windows PC에서 앱을 띄우면 휴대폰과 실제 연결됨 → 실행 전 사용자에게 알림\n- 서명 없는 exe → 첫 실행 SmartScreen 경고
+- Windows PC에서 앱을 띄우면 휴대폰과 실제 연결됨 → 실행 전 사용자에게 알림
+- 서명 없는 exe → 첫 실행 SmartScreen 경고

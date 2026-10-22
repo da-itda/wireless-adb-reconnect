@@ -17,12 +17,15 @@ namespace WirelessAdbReconnect
         // 실행 방법
         //   WirelessADBReconnect.exe              설치 안 됐거나 adb가 없으면 설치 마법사, 아니면 트레이 앱
         //   WirelessADBReconnect.exe --setup      설치 마법사 강제
+        //   WirelessADBReconnect.exe --mirror     화면 미러링 시작 (이미 실행 중이면 그쪽에 신호만) — 바로가기·단축키용
         //   WirelessADBReconnect.exe --uninstall  제거 (설정 > 앱에서 호출)
         //   WirelessADBReconnect.exe --diagnose   (개발용) 다시 붙이기 1회 → diagnose.txt
         //   WirelessADBReconnect.exe --install-test / --uninstall --quiet  (개발용) 창 없이 설치·제거
+        //   WirelessADBReconnect.exe --install-scrcpy  (개발용) scrcpy만 창 없이 설치 → scrcpy-install.txt
         //   WirelessADBReconnect.exe --snapshot <폴더>  (개발용) 화면을 PNG로 저장
         const string MutexName = @"Local\WirelessADBReconnect.Single";
         const string SignalName = @"Local\WirelessADBReconnect.Revive";
+        const string MirrorSignalName = @"Local\WirelessADBReconnect.Mirror";
 
         [STAThread]
         static void Main(string[] args)
@@ -34,6 +37,7 @@ namespace WirelessAdbReconnect
 
             if (a.Contains("--uninstall")) { Installer.Uninstall(a.Contains("--quiet")); return; }
             if (a.Contains("--install-test")) { Installer.Install(false, false); return; }
+            if (a.Contains("--install-scrcpy")) { InstallScrcpyTest(); return; }
             if (a.Contains("--diagnose")) { Diagnose(); return; }
             InitWpf();
             if (a.Contains("--snapshot")) { Snapshot(args[a.IndexOf("--snapshot") + 1]); return; }
@@ -43,10 +47,11 @@ namespace WirelessAdbReconnect
                 // 설치된 앱이 이미 돌고 있으면 그쪽에 "다시 붙이기"만 알리고 끝낸다
                 if (!first && Installer.IsRunningInstalled && !a.Contains("--setup"))
                 {
-                    try { EventWaitHandle.OpenExisting(SignalName).Set(); } catch { }
+                    try { EventWaitHandle.OpenExisting(a.Contains("--mirror") ? MirrorSignalName : SignalName).Set(); } catch { }
                     return;
                 }
                 var signal = new EventWaitHandle(false, EventResetMode.AutoReset, SignalName);
+                var mirrorSignal = new EventWaitHandle(false, EventResetMode.AutoReset, MirrorSignalName);
 
                 if (a.Contains("--setup") || !Installer.IsRunningInstalled || AdbLocator.Find() == null)
                 {
@@ -69,7 +74,7 @@ namespace WirelessAdbReconnect
                 }
 
                 SynchronizationContext.SetSynchronizationContext(new WinForms.WindowsFormsSynchronizationContext());
-                WinForms.Application.Run(new TrayApp(signal));
+                WinForms.Application.Run(new TrayApp(signal, mirrorSignal, mirrorAtStart: a.Contains("--mirror")));
             }
         }
 
@@ -96,6 +101,15 @@ namespace WirelessAdbReconnect
                 s.Read(buf, 0, buf.Length);
                 return Assembly.Load(buf);
             }
+        }
+
+        /// (개발용) scrcpy 설치만 창 없이 → scrcpy-install.txt
+        static void InstallScrcpyTest()
+        {
+            var result = "";
+            try { Mirror.Install(new Progress<int>(_ => { })).GetAwaiter().GetResult(); result = "ok=" + (Mirror.Find() ?? "null"); }
+            catch (Exception ex) { result = "error=" + ex.Message; }
+            File.WriteAllText(Path.Combine(Paths.Data, "scrcpy-install.txt"), result + "\r\n", Encoding.UTF8);
         }
 
         static void Diagnose()

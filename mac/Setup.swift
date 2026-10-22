@@ -213,6 +213,10 @@ final class SetupModel: ObservableObject {
     @Published var busy = false
     @Published var message: String?
     @Published var wantLogin = true
+    /// 2단계 스위치 '화면 미러링(scrcpy)도 설치' — Homebrew가 있고 scrcpy가 없을 때만 켤 수 있음
+    @Published var wantMirror = false
+    let hasScrcpy = ScreenMirror.isInstalled
+    let hasBrew = ScreenMirror.brewPath() != nil
     @Published var device: Device?
     /// 완료 화면에 보여 줄 IP (스냅샷에서는 예시 주소)
     var shownIP: String?
@@ -221,17 +225,21 @@ final class SetupModel: ObservableObject {
     var onAdbReady: () -> Void = {}
     var close: () -> Void = {}
 
-    init(reviver: Reviver, connected: Device? = nil, preview: Step? = nil) {
+    init(reviver: Reviver, connected: Device? = nil, preview: Step? = nil, startAt: Step? = nil) {
         self.reviver = reviver
         pair = PairModel(reviver: reviver)
         shownIP = preview == nil ? reviver.lastAddr?.split(separator: ":").first.map(String.init) : "192.168.0.10"
         device = connected ?? (preview == nil ? reviver.connected() : nil)
         wantLogin = AppInstall.loginItemEnabled || !UserDefaults.standard.bool(forKey: "setupShown") || UserDefaults.standard.bool(forKey: "wantLogin")
         if reviver.adb != nil { skipped.insert(.adb) }
-        if AppInstall.isInApplications { skipped.insert(.install) }
+        // 설치 단계: 응용 프로그램 폴더에 있어도 scrcpy가 없고 아직 묻지 않았으면 보여 준다 ('미러링도 설치' 스위치)
+        let mirrorDeclined = UserDefaults.standard.bool(forKey: "mirrorDeclined")
+        if AppInstall.isInApplications && (hasScrcpy || mirrorDeclined) && startAt != .install { skipped.insert(.install) }
+        wantMirror = hasScrcpy || (hasBrew && !mirrorDeclined)
         // 이미 연결됐거나, 이 Mac에서 무선으로 붙은 적이 있으면(=페어링됨) 페어링 단계는 건너뜀
         if device != nil || (preview == nil && reviver.winner != nil) { skipped.insert(.pair) }
-        step = preview ?? Step.allCases.first { $0 != .done && !skipped.contains($0) } ?? .done
+        if let startAt { skipped.remove(startAt) }
+        step = preview ?? startAt ?? Step.allCases.first { $0 != .done && !skipped.contains($0) } ?? .done
         pair.onPaired = { [weak self] in
             self?.device = self?.reviver.connected()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { self?.step = .done }
@@ -282,9 +290,28 @@ final class SetupModel: ObservableObject {
         if reviver.adb != nil { onAdbReady(); next() } else { message = L("아직 adb를 찾지 못했어요.", "adb still not found.") }
     }
 
-    // ② 설치
+    // ② 설치 — '미러링도 설치'가 켜져 있고 scrcpy가 없으면 먼저 Homebrew로 받고, 그다음 앱 설치를 이어 간다
     func install() {
         UserDefaults.standard.set(wantLogin, forKey: "wantLogin")
+        if wantMirror && !ScreenMirror.isInstalled {
+            busy = true
+            message = L("scrcpy를 설치하는 중이에요… (Homebrew, 1~5분)", "Installing scrcpy… (Homebrew, 1–5 min)")
+            ScreenMirror.installWithBrew { err in
+                DispatchQueue.main.async {
+                    self.busy = false
+                    if let err { self.message = L("scrcpy를 설치하지 못했어요 (앱은 계속 설치할 수 있어요): ", "Couldn't install scrcpy (you can still continue): ") + err; return }
+                    self.message = nil
+                    UserDefaults.standard.set(false, forKey: "mirrorDeclined")
+                    self.installApp()
+                }
+            }
+            return
+        }
+        if !wantMirror && !ScreenMirror.isInstalled { UserDefaults.standard.set(true, forKey: "mirrorDeclined") }
+        installApp()
+    }
+
+    private func installApp() {
         if AppInstall.isInApplications {
             if wantLogin != AppInstall.loginItemEnabled { AppInstall.setLoginItem(wantLogin) }
             next()
@@ -511,8 +538,9 @@ struct InstallStep: View {
     @ObservedObject var m: SetupModel
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            StepHeader(eyebrow: L("2 / 3단계", "Step 2 of 3"), title: L("앱을 설치할게요", "Install the app"),
-                       desc: L("설치하면 메뉴 막대에 머물면서 무선 연결이 끊기면 바로 다시 붙여요.", "It stays in the menu bar and reconnects as soon as wireless debugging drops."))
+            StepHeader(eyebrow: L("2 / 3단계", "Step 2 of 3"), title: AppInstall.isInApplications ? L("설치되어 있어요", "Installed") : L("앱을 설치할게요", "Install the app"),
+                       desc: AppInstall.isInApplications ? L("자동 실행을 바꾸거나, 화면 미러링(scrcpy)을 추가로 설치할 수 있어요.", "Change launch at login, or add screen mirroring (scrcpy).")
+                                                         : L("설치하면 메뉴 막대에 머물면서 무선 연결이 끊기면 바로 다시 붙여요.", "It stays in the menu bar and reconnects as soon as wireless debugging drops."))
             HStack(spacing: 12) {
                 Image(systemName: "folder").font(.system(size: 17)).foregroundColor(.muted)
                 VStack(alignment: .leading, spacing: 2) {
@@ -535,12 +563,31 @@ struct InstallStep: View {
             }
             .padding(.horizontal, 16).padding(.vertical, 14)
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.line))
-            if let msg = m.message { Text(msg).font(.system(size: 12)).foregroundColor(.danger) }
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L("화면 미러링(scrcpy)도 설치", "Also install screen mirroring (scrcpy)")).font(.system(size: 14, weight: .semibold))
+                    Text(m.hasScrcpy ? L("이미 설치됨 · 메뉴 '화면 미러링 시작'(⌘M)", "Already installed · menu 'Start screen mirroring' (⌘M)")
+                         : m.hasBrew ? L("휴대폰 화면을 Mac에 띄우고 조작 · Homebrew로 설치 · 1~5분", "See and control your phone on the Mac · via Homebrew · 1–5 min")
+                                     : L("Homebrew(brew.sh)가 필요해요 · 설치 후 설정에서 켤 수 있어요", "Needs Homebrew (brew.sh) · turn on later in Settings"))
+                        .font(.system(size: 12)).foregroundColor(.muted)
+                }
+                Spacer()
+                Toggle("", isOn: $m.wantMirror).toggleStyle(.switch).tint(.brandText).labelsHidden().disabled(m.hasScrcpy || !m.hasBrew)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 14)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.line))
+            if let msg = m.message {
+                HStack(spacing: 8) {
+                    if m.busy { ProgressView().controlSize(.small) }
+                    Text(msg).font(.system(size: 12)).foregroundColor(m.busy ? .ink2 : .danger).fixedSize(horizontal: false, vertical: true)
+                }
+            }
             Spacer(minLength: 0)
             HStack {
-                if m.canGoBack { Button(L("이전", "Back")) { m.back() }.buttonStyle(TextButton()) }
+                if m.canGoBack { Button(L("이전", "Back")) { m.back() }.buttonStyle(TextButton()).disabled(m.busy) }
                 Spacer()
-                Button(AppInstall.isInApplications ? L("계속", "Continue") : L("설치하고 계속", "Install & continue")) { m.install() }.buttonStyle(PrimaryButton())
+                Button(AppInstall.isInApplications && !(m.wantMirror && !m.hasScrcpy) ? L("계속", "Continue") : L("설치하고 계속", "Install & continue")) { m.install() }
+                    .buttonStyle(PrimaryButton()).disabled(m.busy)
             }.frame(height: 44)
         }
     }
@@ -654,7 +701,8 @@ struct DoneStep: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.line))
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "info.circle").foregroundColor(.muted)
-                Text(L("끊기면 메뉴 막대의 아이콘을 누르거나, 앱을 다시 열기만 하면 돼요. 아이콘이 초록이면 연결, 빨강이면 끊김이에요.", "If it drops, click the menu bar icon or just open the app again. Green icon = connected, red = disconnected."))
+                Text(L("끊기면 메뉴 막대의 아이콘을 누르거나, 앱을 다시 열기만 하면 돼요. 아이콘의 전파가 회색이면 연결, 빨강이면 끊김이에요.", "If it drops, click the menu bar icon or just open the app again. Gray waves = connected, red = disconnected.")
+                     + (ScreenMirror.isInstalled ? L(" 메뉴의 '화면 미러링 시작'(⌘M)으로 휴대폰 화면을 띄울 수 있어요.", " 'Start screen mirroring' (⌘M) in the menu shows your phone's screen.") : ""))
                     .font(.system(size: 12)).foregroundColor(.ink2).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
@@ -714,8 +762,8 @@ private func hostWindow<V: View>(_ view: V, title: String, onClose: @escaping ()
     return w
 }
 
-func makeSetupWindow(reviver: Reviver, onAdbReady: @escaping () -> Void, onClose: @escaping () -> Void) -> NSWindow {
-    let m = SetupModel(reviver: reviver)
+func makeSetupWindow(reviver: Reviver, startAt: SetupModel.Step? = nil, onAdbReady: @escaping () -> Void, onClose: @escaping () -> Void) -> NSWindow {
+    let m = SetupModel(reviver: reviver, startAt: startAt)
     m.onAdbReady = onAdbReady
     let w = hostWindow(SetupView(m: m), title: appName + L(" 설정", " Settings")) { m.pair.stop(); onClose() }
     m.close = { [weak w] in w?.close() }
@@ -754,4 +802,22 @@ func saveSnapshots(to dir: URL) {
         save(view, "setup-\(step.rawValue + 1).png")
     }
     save(PairWindowView(pair: PairModel(reviver: r), autoStart: false, close: {}), "pair-window.png")
+
+    // 메뉴 막대 아이콘 (연결됨·끊김·다시 붙이는 중) — 밝은/어두운 메뉴 막대, 2배 크기
+    for (name, appearance, bg) in [("menubar-light.png", NSAppearance.Name.aqua, NSColor(white: 0.93, alpha: 1)),
+                                   ("menubar-dark.png", NSAppearance.Name.darkAqua, NSColor(white: 0.17, alpha: 1))] {
+        let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 192, pixelsHigh: 48, bitsPerSample: 8, samplesPerPixel: 4,
+                                   hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        rep.size = NSSize(width: 96, height: 24)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
+            bg.setFill(); NSRect(x: 0, y: 0, width: 96, height: 24).fill()
+            for (i, s) in [LinkState.connected, .disconnected, .working].enumerated() {
+                statusImage(s).draw(in: NSRect(x: 9 + i * 30, y: 3, width: 18, height: 18))
+            }
+        }
+        NSGraphicsContext.restoreGraphicsState()
+        try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent(name))
+    }
 }

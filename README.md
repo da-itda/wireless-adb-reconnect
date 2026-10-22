@@ -34,14 +34,15 @@ The usual fix is `adb kill-server`, start it again, look up the new IP:port, `ad
 ## Features
 
 - **One click to reconnect** — click the menu bar / tray icon, or just open the app again.
-- **Status at a glance** — the icon is 🟢 green when connected, 🔴 red when disconnected.
+- **Status at a glance** — the menu bar / tray icon shows ⚪ gray waves when connected, 🔴 red waves when disconnected (gray stays readable on both light and dark menu bars and taskbars).
 - **Diagnoses the cause** — who owns the adb server, Local Network permission (macOS), phone visible over mDNS, current IP:port, `offline` / `unauthorized` devices, adb version conflicts, Public network profile (Windows), pairing lost.
 - **Tries fixes in order, learns** — stops at the first one that works and tries it first next time.
 - **QR pairing** like Android Studio, plus pairing-code fallback. Retries automatically if the phone's IP changes mid-pairing.
-- **Setup wizard** — installs Google's official **platform-tools (~15 MB)** if adb is missing (or Android Studio, if you prefer), installs the app, sets launch-at-login. Steps already done are skipped.
+- **Screen mirroring** — *Start screen mirroring* (macOS ⌘M, Windows tray menu or `WirelessADBReconnect.exe --mirror`) shows and controls your phone on the computer via [scrcpy](https://github.com/Genymobile/scrcpy). It reuses the wireless connection and adb server the app keeps alive, so scrcpy never kills the server. If the phone is disconnected it reconnects first. Options: quality, audio, always on top, turn phone screen off, record.
+- **Setup wizard** — installs Google's official **platform-tools (~15 MB)** if adb is missing (or Android Studio, if you prefer), installs the app, sets launch-at-login, and asks whether to also install scrcpy for screen mirroring (Windows: GitHub release zip ~11 MB; macOS: Homebrew). Steps already done are skipped.
 - **Native and tiny**
   - macOS 13+: Swift / SwiftUI, signed & notarized
-  - Windows 10/11: single signed `.exe` (~0.5 MB) on built-in .NET Framework 4.8, **x64 and ARM64**
+  - Windows 10/11: single signed `.exe` (~0.7 MB) on built-in .NET Framework 4.8, **x64 and ARM64**
 
 > The UI follows your OS language: **Korean** on Korean systems, **English** everywhere else.
 
@@ -88,7 +89,9 @@ The app owns its adb server (`adb nodaemon server` as a child process), so the s
 3. **Remember** the strategy that worked and try it first next time.
 4. **Tell you** — a notification with the result, or the most likely cause and what to do.
 
-Logs: macOS `~/Library/Logs/wireless-adb-reconnect.log` · Windows `%LOCALAPPDATA%\Wireless ADB Reconnect\adb-revive.log`
+**Screen mirroring**: scrcpy is launched with `ADB=<the adb this app uses>` and `-s <wireless device>`. So it mirrors over Wi‑Fi even when USB is also plugged in, and scrcpy's own adb (a different version) cannot kill the server. If scrcpy is missing, turn on *Also install screen mirroring (scrcpy)* in the Settings wizard: Windows downloads the official release zip to `%LOCALAPPDATA%\Wireless ADB Reconnect\scrcpy`, macOS runs `brew install scrcpy`. On Windows, `WirelessADBReconnect.exe --mirror` starts (or stops) mirroring — handy for a desktop shortcut.
+
+Logs: macOS `~/Library/Logs/wireless-adb-reconnect.log` (mirroring: `-mirror.log`) · Windows `%LOCALAPPDATA%\Wireless ADB Reconnect\adb-revive.log` (mirroring: `mirror.log`)
 
 ## Troubleshooting
 
@@ -99,6 +102,8 @@ Logs: macOS `~/Library/Logs/wireless-adb-reconnect.log` · Windows `%LOCALAPPDAT
 | `failed to authenticate` / `CERTIFICATE_UNKNOWN` | this computer isn't paired | Menu › *Pair phone* and scan the QR |
 | keeps dropping after the phone switches Wi‑Fi | phone IP changes (randomized MAC) | Use the phone's device MAC for that Wi‑Fi, or a DHCP reservation |
 | `doesn't match this client` | another adb (Android Studio, scrcpy…) | The app uses the Android SDK's adb first to avoid this |
+| Mirroring ends suddenly | wireless debugging dropped during mirroring | Start mirroring again: it reconnects first, then mirrors |
+| "scrcpy is required" | scrcpy not installed | Settings › step 2 › *Also install screen mirroring (scrcpy)* (macOS needs Homebrew) |
 
 More (in Korean): [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 
@@ -116,15 +121,15 @@ dotnet build windows\WirelessAdbReconnect\WirelessAdbReconnect.csproj -c Release
 ```
 
 ```
-mac/        Swift menu bar app (main.swift: diagnosis & strategies, Setup.swift: SwiftUI wizard & pairing)
-windows/    C# tray app (Reviver.cs: diagnosis & strategies, WPF wizard & pairing)
-assets/     icons
+mac/        Swift menu bar app (main.swift: diagnosis & strategies, Setup.swift: SwiftUI wizard & pairing, Mirror.swift: scrcpy mirroring)
+windows/    C# tray app (Reviver.cs: diagnosis & strategies, WPF wizard & pairing, Mirror.cs: scrcpy mirroring)
+assets/     icons (regenerate all with ./assets/make_icons.sh)
 docs/       plan, troubleshooting, screenshots
 ```
 
 ## Privacy
 
-Everything runs locally. The only network access besides your phone is downloading Google's platform-tools, and only if you choose to install them.
+Everything runs locally. The only network access besides your phone is downloading Google's platform-tools and scrcpy's release zip (GitHub), and only if you choose to install them.
 
 ## License
 

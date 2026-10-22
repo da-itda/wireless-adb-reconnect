@@ -29,7 +29,7 @@ namespace WirelessAdbReconnect
         /// 완료 후 설치된 앱(트레이)을 실행할지
         public bool LaunchInstalled { get; private set; }
 
-        internal SetupWindow(Reviver reviver, bool installedMode, Step? preview = null, Device previewDevice = null)
+        internal SetupWindow(Reviver reviver, bool installedMode, Step? preview = null, Device previewDevice = null, Step? startAt = null)
         {
             InitializeComponent();
             this.reviver = reviver;
@@ -44,16 +44,21 @@ namespace WirelessAdbReconnect
             if (preview.HasValue) previewIP = "192.168.0.10";
             var connected = preview.HasValue ? previewDevice : reviver.Connected();
             if (reviver.Adb != null && preview != Step.Adb) skipped.Add(Step.Adb);
-            if (installedMode) skipped.Add(Step.Install);
+            // 설치 단계: 이미 설치됐어도 scrcpy가 없고 아직 묻지 않았으면 보여 준다 ('미러링도 설치' 스위치)
+            if (installedMode && (Mirror.IsInstalled || Mirror.Declined) && startAt != Step.Install) skipped.Add(Step.Install);
             if (connected != null) skipped.Add(Step.Pair);
 
             InstallWhere.Text = installedMode ? L("내 프로그램 폴더 · 이미 설치됨", "Programs folder · already installed") : L("내 프로그램 폴더 (AppData\\Local\\Programs)", "Programs folder (AppData\\Local\\Programs)");
             AutoStart.IsChecked = !installedMode || Installer.AutoStart;
             Desktop.IsChecked = !installedMode || Installer.DesktopShortcut;
+            var hasScrcpy = preview == null && Mirror.IsInstalled;
+            MirrorToggle.IsChecked = hasScrcpy || !Mirror.Declined;
+            MirrorToggle.IsEnabled = !hasScrcpy;
+            if (hasScrcpy) MirrorDetail.Text = L("이미 설치됨 · 트레이 메뉴 '화면 미러링 시작'", "Already installed · tray menu 'Start screen mirroring'");
             ChoiceAdb.Checked += (s, e) => Render();
             ChoiceStudio.Checked += (s, e) => Render();
 
-            step = preview ?? new[] { Step.Adb, Step.Install, Step.Pair }.FirstOrDefault(x => !skipped.Contains(x));
+            step = preview ?? startAt ?? new[] { Step.Adb, Step.Install, Step.Pair }.FirstOrDefault(x => !skipped.Contains(x));
             if (preview == null && skipped.Contains(step)) step = Step.Done;
             if (step == Step.Done) ShowDone(connected);
             Render();
@@ -110,12 +115,12 @@ namespace WirelessAdbReconnect
                     break;
                 case Step.Install:
                     Header3(L("2 / 3단계", "Step 2 of 3"), installedMode ? L("설치되어 있어요", "Installed") : L("앱을 설치할게요", "Install the app"),
-                        installedMode ? L("자동 실행과 바로가기를 바꿀 수 있어요.", "You can change launch at login and the desktop shortcut.")
+                        installedMode ? L("자동 실행·바로가기를 바꾸거나, 화면 미러링(scrcpy)을 추가로 설치할 수 있어요.", "Change launch at login and the shortcut, or add screen mirroring (scrcpy).")
                                       : L("설치하면 작업 표시줄 트레이에 머물면서 무선 연결이 끊기면 바로 다시 붙여요.", "It stays in the system tray and reconnects as soon as wireless debugging drops."));
                     LeftBtn.Content = L("이전", "Back");
-                    LeftBtn.Visibility = Vis(CanGoBack);
-                    RightBtn.Content = installedMode ? L("계속", "Continue") : L("설치하고 계속", "Install & continue");
-                    RightBtn.IsEnabled = true;
+                    LeftBtn.Visibility = Vis(CanGoBack && !busy);
+                    RightBtn.Content = installedMode && Mirror.IsInstalled ? L("계속", "Continue") : L("설치하고 계속", "Install & continue");
+                    RightBtn.IsEnabled = !busy;
                     break;
                 case Step.Pair:
                     Header3(L("3 / 3단계 · 처음 한 번만", "Step 3 of 3 · first time only"), L("휴대폰으로 QR을 찍어 주세요", "Scan the QR with your phone"), null);
@@ -230,7 +235,7 @@ namespace WirelessAdbReconnect
             switch (step)
             {
                 case Step.Adb: await InstallAdb(); break;
-                case Step.Install: Install(); break;
+                case Step.Install: await Install(); break;
                 case Step.Done:
                     LaunchInstalled = !installedMode;
                     Close();
@@ -279,10 +284,40 @@ namespace WirelessAdbReconnect
             Render();
         }
 
-        void Install()
+        async Task Install()
         {
             try
             {
+                // '미러링도 설치'가 켜져 있고 scrcpy가 없으면 먼저 받는다 (끄고 지나가면 다음부터 묻지 않음)
+                if (MirrorToggle.IsChecked == true && !Mirror.IsInstalled)
+                {
+                    busy = true;
+                    Render();
+                    InstallProgress.Visibility = Visibility.Visible;
+                    InstallProgress.Value = 0;
+                    InstallMessage.Foreground = (Brush)FindResource("Ink2");
+                    InstallMessage.Text = L("scrcpy를 받는 중이에요…", "Downloading scrcpy…");
+                    try
+                    {
+                        await Mirror.Install(new Progress<int>(p => { InstallProgress.Value = p; InstallMessage.Text = L("scrcpy를 받는 중이에요… ", "Downloading scrcpy… ") + $"{p}%"; }));
+                        InstallMessage.Text = "";
+                        Mirror.Declined = false;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Write(L("scrcpy 설치 실패: ", "scrcpy install failed: ") + ex);
+                        InstallMessage.Foreground = (Brush)FindResource("Danger");
+                        InstallMessage.Text = L("scrcpy를 설치하지 못했어요 (앱은 계속 설치할 수 있어요): ", "Couldn't install scrcpy (you can still continue): ") + ex.Message;
+                        busy = false;
+                        InstallProgress.Visibility = Visibility.Collapsed;
+                        Render();
+                        return;
+                    }
+                    busy = false;
+                    InstallProgress.Visibility = Visibility.Collapsed;
+                }
+                else if (MirrorToggle.IsChecked != true && !Mirror.IsInstalled) Mirror.Declined = true;
+
                 if (installedMode)
                 {
                     Installer.AutoStart = AutoStart.IsChecked == true;
@@ -294,6 +329,7 @@ namespace WirelessAdbReconnect
             catch (Exception ex)
             {
                 Log.Write(L("설치 실패: ", "Install failed: ") + ex);
+                InstallMessage.Foreground = (Brush)FindResource("Danger");
                 InstallMessage.Text = L("설치하지 못했어요: ", "Couldn't install: ") + ex.Message;
             }
         }

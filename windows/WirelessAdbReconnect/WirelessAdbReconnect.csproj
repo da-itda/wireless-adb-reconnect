@@ -16,7 +16,7 @@
     <Product>Wireless ADB Reconnect</Product>
     <AssemblyTitle>Wireless ADB Reconnect</AssemblyTitle>
     <Description>Wireless ADB Reconnect</Description>
-    <Version>1.1.1</Version>
+    <Version>1.2.0</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
@@ -27,7 +27,11 @@
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <EmbeddedResource Include="app.ico" LogicalName="app.ico" />
-    <EmbeddedResource Include="app-red.ico" LogicalName="app-red.ico" />
+    <!-- 트레이 상태 아이콘 (assets/make_icons.sh) -->
+    <EmbeddedResource Include="tray-ok-light.ico" LogicalName="tray-ok-light.ico" />
+    <EmbeddedResource Include="tray-ok-dark.ico" LogicalName="tray-ok-dark.ico" />
+    <EmbeddedResource Include="tray-fail-light.ico" LogicalName="tray-fail-light.ico" />
+    <EmbeddedResource Include="tray-fail-dark.ico" LogicalName="tray-fail-dark.ico" />
     <EmbeddedResource Include="$(PkgQRCoder)\lib\net40\QRCoder.dll" LogicalName="deps.QRCoder.dll" />
     <Resource Include="app.ico" />
   </ItemGroup>

@@ -96,9 +96,18 @@
                                     <TextBlock Text="{local:T Ko='더블클릭하면 바로 다시 붙이기', En='Double-click to reconnect'}" FontSize="12" Foreground="{StaticResource Muted}" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </DockPanel>
+                            <Border Height="1" Background="{StaticResource Line}"/>
+                            <DockPanel Margin="16,14">
+                                <CheckBox x:Name="MirrorToggle" DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="True" VerticalAlignment="Center"/>
+                                <StackPanel>
+                                    <TextBlock Text="{local:T Ko='화면 미러링(scrcpy)도 설치', En='Also install screen mirroring (scrcpy)'}" FontSize="14" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="MirrorDetail" Text="{local:T Ko='휴대폰 화면을 PC에 띄우고 조작 · 약 11MB · 오픈소스(Genymobile)', En='See and control your phone on this PC · ~11 MB · open source (Genymobile)'}" FontSize="12" Foreground="{StaticResource Muted}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </DockPanel>
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="InstallMessage" FontSize="12" Foreground="{StaticResource Danger}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    <ProgressBar x:Name="InstallProgress" Height="6" Margin="0,10,0,0" Visibility="Collapsed" Foreground="{StaticResource Brand}" Background="{StaticResource Line}" BorderThickness="0"/>
+                    <TextBlock x:Name="InstallMessage" FontSize="12" Foreground="{StaticResource Ink2}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                 </StackPanel>
 
                 <!-- ③ 페어링 -->
@@ -132,7 +141,7 @@
                     </Border>
                     <Border Background="{StaticResource Soft}" CornerRadius="10" Padding="14,12" Margin="0,12,0,0">
                         <TextBlock FontSize="12" Foreground="{StaticResource Ink2}" TextWrapping="Wrap" LineHeight="19"
-                                   Text="{local:T Ko='끊기면 작업 표시줄 트레이의 아이콘을 더블클릭하거나, 바탕화면 바로가기를 다시 열기만 하면 돼요. 아이콘이 초록이면 연결, 빨강이면 끊김이에요.', En='If it drops, double-click the tray icon or open the desktop shortcut again. Green icon = connected, red = disconnected.'}"/>
+                                   Text="{local:T Ko='끊기면 작업 표시줄 트레이의 아이콘을 더블클릭하거나, 바탕화면 바로가기를 다시 열기만 하면 돼요. 아이콘의 전파가 회색이면 연결, 빨강이면 끊김이에요.', En='If it drops, double-click the tray icon or open the desktop shortcut again. Gray waves = connected, red = disconnected.'}"/>
                     </Border>
                 </StackPanel>
             </Grid>

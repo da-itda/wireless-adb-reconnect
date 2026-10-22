@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using Microsoft.Win32;
 
 namespace WirelessAdbReconnect
 {
@@ -45,6 +46,8 @@ namespace WirelessAdbReconnect
         public static readonly string ServerLog = Path.Combine(Data, "adb-server.log");
         public static readonly string Settings = Path.Combine(Data, "settings.txt");
         public static readonly string PlatformTools = Path.Combine(Data, "platform-tools");
+        public static readonly string Scrcpy = Path.Combine(Data, "scrcpy");
+        public static readonly string MirrorLog = Path.Combine(Data, "mirror.log");
         public static readonly string InstallDir = Path.Combine(LocalAppData, "Programs", AppInfo.Name);
         public static readonly string InstalledExe = Path.Combine(InstallDir, AppInfo.Exe + ".exe");
         public static readonly string SdkAdb = Path.Combine(LocalAppData, @"Android\Sdk\platform-tools\adb.exe");
@@ -186,10 +189,30 @@ namespace WirelessAdbReconnect
 
     static class AppIcon
     {
-        /// app.ico = 초록(연결됨), app-red.ico = 빨강(끊김)
-        public static Icon Load(Size? size = null, bool red = false)
+        /// app.ico = 앱 아이콘(녹색 심볼)
+        public static Icon Load(Size? size = null) => Load("app.ico", size);
+
+        /// 트레이: 전파가 회색 = 연결됨, 빨강 = 끊김 (초록은 작업 표시줄에서 잘 안 보여서).
+        /// 몸체는 작업 표시줄 밝기에 맞춰 검정(light) / 흰색(dark) — tray-{ok,fail}-{light,dark}.ico
+        public static Icon Tray(bool ok, Size size) => Load($"tray-{(ok ? "ok" : "fail")}-{(LightTaskbar ? "light" : "dark")}.ico", size);
+
+        /// 작업 표시줄이 밝은 테마인지 (값이 없으면 어두움 — 예전 Windows 10 기본)
+        public static bool LightTaskbar
         {
-            using (var s = typeof(AppIcon).Assembly.GetManifestResourceStream(red ? "app-red.ico" : "app.ico"))
+            get
+            {
+                try
+                {
+                    using (var k = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"))
+                        return k?.GetValue("SystemUsesLightTheme") is int v && v == 1;
+                }
+                catch { return false; }
+            }
+        }
+
+        static Icon Load(string name, Size? size)
+        {
+            using (var s = typeof(AppIcon).Assembly.GetManifestResourceStream(name))
                 return size.HasValue ? new Icon(s, size.Value) : new Icon(s);
         }
 

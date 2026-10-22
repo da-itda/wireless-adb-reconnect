@@ -529,28 +529,30 @@ final class Reviver {
 
 // MARK: - 메뉴 막대 UI
 
-/// 메뉴 막대 상태 아이콘: 사용자 심볼(지그재그 선 + 양 끝 점). 선은 메뉴 막대 글자색, 점은 상태색
+/// 메뉴 막대 상태 아이콘: 사용자 심볼(안드로이드 머리 + 전파). 몸체는 메뉴 막대 글자색, 전파는 상태색
+/// 회색 = 연결됨 (초록은 메뉴 막대에서 잘 안 보여서, 2026-10-22 사용자 결정), 빨강 = 끊김, 주황 = 다시 붙이는 중
 enum LinkState { case connected, disconnected, working }
 
+/// 모양 마스크 (assets/make_icons.sh → 앱 Resources)
+let statusMasks = (body: Bundle.main.image(forResource: "status-body"), waves: Bundle.main.image(forResource: "status-waves"))
+
 func statusImage(_ state: LinkState) -> NSImage {
-    let dot: NSColor = state == .connected ? NSColor(srgbRed: 0.24, green: 0.86, blue: 0.52, alpha: 1)
-        : state == .disconnected ? NSColor(srgbRed: 0.87, green: 0.24, blue: 0.24, alpha: 1)
-        : NSColor(srgbRed: 0.98, green: 0.70, blue: 0.20, alpha: 1)
-    // 원본 1034×841 좌표(위→아래)를 22×18로 줄여 그린다 — 가는 선 버전(선 1.7pt, 점 지름 약 6pt)
-    // (굵은 버전: 24×18, 선 2.4pt, 점 8pt, 여백 1.5pt — 2026-10-15 비교 후 사용자가 가는 버전 선택)
-    let img = NSImage(size: NSSize(width: 22, height: 18), flipped: true) { _ in
-        let k: CGFloat = 22.0 / 1034.0
-        func pt(_ x: CGFloat, _ y: CGFloat) -> NSPoint { NSPoint(x: x * k, y: y * k) }
-        dot.setFill()
-        NSBezierPath(ovalIn: NSRect(x: 138 * k - 3.1, y: 703 * k - 3.1, width: 6.2, height: 6.2)).fill()
-        NSBezierPath(ovalIn: NSRect(x: 885 * k - 3.3, y: 148 * k - 3.3, width: 6.6, height: 6.6)).fill()
-        let line = NSBezierPath()
-        line.move(to: pt(148, 703)); line.line(to: pt(210, 295)); line.line(to: pt(808, 700)); line.line(to: pt(884, 140))
-        line.lineWidth = 1.7
-        line.lineCapStyle = .round
-        line.lineJoinStyle = .miter
-        NSColor.labelColor.setStroke()
-        line.stroke()
+    let img = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
+        let dark = NSAppearance.currentDrawing().bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        let waves: NSColor = state == .connected ? (dark ? NSColor(white: 0.63, alpha: 1) : NSColor(white: 0.29, alpha: 1))
+            : state == .disconnected ? NSColor(srgbRed: 1, green: 0.22, blue: 0.24, alpha: 1)
+            : NSColor(srgbRed: 0.98, green: 0.70, blue: 0.20, alpha: 1)
+        // 마스크를 그린 자리만 색으로 칠한다
+        func paint(_ mask: NSImage?, _ color: NSColor) {
+            guard let mask, let ctx = NSGraphicsContext.current?.cgContext else { return }
+            ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+            mask.draw(in: rect)
+            color.setFill()
+            rect.fill(using: .sourceAtop)
+            ctx.endTransparencyLayer()
+        }
+        paint(statusMasks.body, .labelColor)
+        paint(statusMasks.waves, waves)
         return true
     }
     img.isTemplate = false
@@ -582,7 +584,7 @@ final class StatusHeader: NSView {
     required init?(coder: NSCoder) { fatalError() }
 
     func show(_ state: LinkState, _ title: String, _ detail: String) {
-        dot.layer?.backgroundColor = (state == .connected ? NSColor.systemGreen : state == .disconnected ? NSColor.systemRed : NSColor.systemOrange).cgColor
+        dot.layer?.backgroundColor = (state == .connected ? NSColor.systemGray : state == .disconnected ? NSColor.systemRed : NSColor.systemOrange).cgColor
         self.title.stringValue = title
         self.detail.stringValue = detail
     }
@@ -596,6 +598,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let methodLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     let reviveItem = NSMenuItem(title: L("지금 다시 붙이기", "Reconnect now"), action: #selector(reviveNow), keyEquivalent: "r")
     let loginItem = NSMenuItem(title: L("로그인할 때 자동 실행", "Launch at login"), action: #selector(toggleLogin), keyEquivalent: "")
+    let mirror = ScreenMirror()
+    let mirrorItem = NSMenuItem(title: L("화면 미러링 시작", "Start screen mirroring"), action: #selector(mirrorNow), keyEquivalent: "m")
+    let mirrorOptions = NSMenu()
     var busy = false
     var setupWindow: NSWindow?
     var pairWindow: NSWindow?
@@ -611,6 +616,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(methodLine)
         menu.addItem(.separator())
         reviveItem.target = self; menu.addItem(reviveItem)
+        mirrorItem.target = self; menu.addItem(mirrorItem)
+        let optionsItem = NSMenuItem(title: L("미러링 옵션", "Mirroring options"), action: nil, keyEquivalent: "")
+        optionsItem.submenu = mirrorOptions
+        buildMirrorOptions()
+        menu.addItem(optionsItem)
         menu.addItem(withTitle: L("휴대폰 페어링…", "Pair phone…"), action: #selector(showPair), keyEquivalent: "p").target = self
         menu.addItem(withTitle: L("진단 보기", "Diagnostics"), action: #selector(openLog), keyEquivalent: "l").target = self
         menu.addItem(.separator())
@@ -622,6 +632,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.menu = menu
         Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in self?.refresh() }
         Notifier.shared.onRetry = { [weak self] in self?.reviveNow() }
+        mirror.onExit = { [weak self] code, byUser in self?.mirrorDidExit(code: code, byUser: byUser) }
         Notifier.shared.setup()
 
         // 옮긴 직후: 미리 고른 '로그인 시 자동 실행' 적용
@@ -639,7 +650,95 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         reviveNow(); return false
     }
 
-    func applicationWillTerminate(_ n: Notification) { reviver.shutdown() }
+    func applicationWillTerminate(_ n: Notification) { mirror.stop(); reviver.shutdown() }
+
+    // MARK: 화면 미러링 (scrcpy)
+
+    func buildMirrorOptions() {
+        mirrorOptions.removeAllItems()
+        for q in MirrorQuality.allCases {
+            let i = NSMenuItem(title: q.title, action: #selector(setQuality(_:)), keyEquivalent: "")
+            i.target = self; i.representedObject = q.rawValue; i.state = mirror.quality == q ? .on : .off
+            mirrorOptions.addItem(i)
+        }
+        mirrorOptions.addItem(.separator())
+        let toggles: [(String, Selector, Bool)] = [
+            (L("소리도 전송", "Forward audio"), #selector(toggleAudio), mirror.audio),
+            (L("창을 항상 위에", "Window always on top"), #selector(toggleOnTop), mirror.alwaysOnTop),
+            (L("미러링 중 폰 화면 끄기", "Turn phone screen off"), #selector(toggleScreenOff), mirror.turnScreenOff),
+            (L("동영상으로 녹화 (Movies 폴더)", "Record to Movies folder"), #selector(toggleRecord), mirror.record),
+        ]
+        for (t, sel, on) in toggles {
+            let i = NSMenuItem(title: t, action: sel, keyEquivalent: "")
+            i.target = self; i.state = on ? .on : .off
+            mirrorOptions.addItem(i)
+        }
+        mirrorOptions.addItem(.separator())
+        mirrorOptions.addItem(withTitle: L("미러링 로그 보기", "Mirroring log"), action: #selector(openMirrorLog), keyEquivalent: "").target = self
+        let note = NSMenuItem(title: L("옵션은 다음 미러링부터 적용돼요", "Options apply to the next mirroring session"), action: nil, keyEquivalent: "")
+        note.isEnabled = false
+        mirrorOptions.addItem(note)
+    }
+
+    @objc func setQuality(_ sender: NSMenuItem) {
+        if let raw = sender.representedObject as? String, let q = MirrorQuality(rawValue: raw) { mirror.quality = q }
+        buildMirrorOptions()
+    }
+    @objc func toggleAudio() { mirror.audio.toggle(); buildMirrorOptions() }
+    @objc func toggleOnTop() { mirror.alwaysOnTop.toggle(); buildMirrorOptions() }
+    @objc func toggleScreenOff() { mirror.turnScreenOff.toggle(); buildMirrorOptions() }
+    @objc func toggleRecord() { mirror.record.toggle(); buildMirrorOptions() }
+    @objc func openMirrorLog() { NSWorkspace.shared.open(mirrorLogURL) }
+
+    /// 미러링 시작/중지. 끊겨 있으면 먼저 다시 붙인 뒤 띄운다.
+    @objc func mirrorNow() {
+        if mirror.isRunning {
+            mirror.stop()
+            updateMirrorItem()
+            return
+        }
+        guard ScreenMirror.isInstalled else {
+            Toast.show(title: L("scrcpy가 필요해요", "scrcpy is required"),
+                       body: L("설정 창에서 '화면 미러링(scrcpy)도 설치'를 켜 주세요.", "Turn on 'Also install screen mirroring (scrcpy)' in Settings."), ok: false)
+            openSetup(step: .install)
+            return
+        }
+        guard !busy else { return }
+        busy = true
+        mirrorItem.isEnabled = false; reviveItem.isEnabled = false
+        show(.working, L("미러링 준비 중…", "Preparing mirroring…"), L("휴대폰 연결을 확인하고 있어요", "Checking the phone connection"))
+        queue.async {
+            var d = self.reviver.connected()
+            if d == nil {
+                log(L("미러링 전 다시 붙이기", "Reconnecting before mirroring"))
+                let r = self.reviver.revive()
+                d = r.ok ? self.reviver.connected() : nil
+                if d == nil { Notifier.shared.post(ok: false, title: L("연결하지 못했어요", "Couldn't reconnect"), body: r.message) }
+            }
+            if let d, let adb = self.reviver.adb {
+                let r = self.mirror.start(adb: adb, serial: d.serial, title: (d.model ?? L("휴대폰", "Phone")) + " · " + appShortName)
+                if !r.ok { Notifier.shared.post(ok: false, title: L("미러링을 시작하지 못했어요", "Couldn't start mirroring"), body: r.message) }
+            }
+            DispatchQueue.main.async {
+                self.busy = false
+                self.mirrorItem.isEnabled = true; self.reviveItem.isEnabled = true
+                self.refresh()
+            }
+        }
+    }
+
+    func mirrorDidExit(code: Int32, byUser: Bool) {
+        // 사용자가 창을 닫거나 메뉴에서 중지한 경우는 조용히. 그 밖(연결 끊김 등)은 알림.
+        if !byUser && code != 0 {
+            Notifier.shared.post(ok: false, title: L("미러링이 끊겼어요", "Mirroring stopped"),
+                                 body: L("무선 연결이 끊겼을 수 있어요. ⌘M으로 다시 붙이고 미러링해요.", "Wireless debugging may have dropped. Press ⌘M to reconnect and mirror again."))
+        }
+        refresh()
+    }
+
+    func updateMirrorItem() {
+        mirrorItem.title = mirror.isRunning ? L("화면 미러링 중지", "Stop screen mirroring") : L("화면 미러링 시작", "Start screen mirroring")
+    }
 
     func show(_ state: LinkState, _ title: String, _ detail: String) {
         item.button?.image = statusImage(state)
@@ -678,20 +777,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 guard !self.busy else { return }
                 if let d {
-                    self.show(.connected, L("연결됨", "Connected"), "\(d.model ?? L("휴대폰", "Phone")) · " + L("무선", "Wireless") + (addr.map { " · \($0)" } ?? ""))
+                    self.show(.connected, L("연결됨", "Connected"), "\(d.model ?? L("휴대폰", "Phone")) · " + L("무선", "Wireless") + (addr.map { " · \($0)" } ?? "")
+                              + (self.mirror.isRunning ? L(" · 미러링 중", " · Mirroring") : ""))
                 } else {
                     self.show(.disconnected, L("연결 안 됨", "Disconnected"), L("⌘R 또는 앱 아이콘을 누르면 다시 붙여요", "Press ⌘R or open the app to reconnect"))
                 }
                 self.methodLine.title = L("마지막 성공 방법: ", "Last working fix: ") + (w ?? "-")
                 self.loginItem.state = AppInstall.loginItemEnabled ? .on : .off
+                self.updateMirrorItem()
             }
         }
     }
 
-    @objc func showSetup() {
+    @objc func showSetup() { openSetup(step: nil) }
+
+    func openSetup(step: SetupModel.Step?) {
         UserDefaults.standard.set(true, forKey: "setupShown")
         if setupWindow == nil {
-            setupWindow = makeSetupWindow(reviver: reviver, onAdbReady: { [weak self] in self?.reviveNow() },
+            setupWindow = makeSetupWindow(reviver: reviver, startAt: step, onAdbReady: { [weak self] in self?.reviveNow() },
                                           onClose: { [weak self] in self?.setupWindow = nil; self?.refresh() })
         }
         NSApp.activate(ignoringOtherApps: true)

@@ -14,11 +14,13 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 TMP="$(mktemp -d)"
 for arch in arm64 x86_64; do
     swiftc -O -swift-version 5 -target $arch-apple-macos13 \
-        "$ROOT/mac/main.swift" "$ROOT/mac/Setup.swift" -o "$TMP/$arch"
+        "$ROOT/mac/main.swift" "$ROOT/mac/Setup.swift" "$ROOT/mac/Mirror.swift" -o "$TMP/$arch"
 done
 lipo -create "$TMP/arm64" "$TMP/x86_64" -output "$APP/Contents/MacOS/WirelessADBReconnect"
 rm -rf "$TMP"
 cp "$ROOT/assets/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+# 메뉴 막대 상태 아이콘 마스크 (assets/make_icons.sh)
+cp "$ROOT/assets/status-body.png" "$ROOT/assets/status-waves.png" "$APP/Contents/Resources/"
 
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -28,8 +30,8 @@ cat > "$APP/Contents/Info.plist" <<EOF
     <key>CFBundleName</key><string>ADB Reconnect</string>
     <key>CFBundleDisplayName</key><string>$NAME</string>
     <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
-    <key>CFBundleVersion</key><string>1.1.1</string>
-    <key>CFBundleShortVersionString</key><string>1.1.1</string>
+    <key>CFBundleVersion</key><string>1.2.0</string>
+    <key>CFBundleShortVersionString</key><string>1.2.0</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleExecutable</key><string>WirelessADBReconnect</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
