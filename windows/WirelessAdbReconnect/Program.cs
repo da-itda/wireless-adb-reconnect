@@ -23,6 +23,8 @@ namespace WirelessAdbReconnect
         //   WirelessADBReconnect.exe --install-test / --uninstall --quiet  (개발용) 창 없이 설치·제거
         //   WirelessADBReconnect.exe --install-scrcpy  (개발용) scrcpy만 창 없이 설치 → scrcpy-install.txt
         //   WirelessADBReconnect.exe --snapshot <폴더>  (개발용) 화면을 PNG로 저장
+        //   WirelessADBReconnect.exe --after-update <pid>  업데이트 직후: 옛 앱(pid)이 끝나기를 기다렸다가 실행
+        //   WirelessADBReconnect.exe --update-test  (개발용) 최신 릴리스로 자기 자신을 창 없이 교체 → update-test.txt
         const string MutexName = @"Local\WirelessADBReconnect.Single";
         const string SignalName = @"Local\WirelessADBReconnect.Revive";
         const string MirrorSignalName = @"Local\WirelessADBReconnect.Mirror";
@@ -39,6 +41,15 @@ namespace WirelessAdbReconnect
             if (a.Contains("--install-test")) { Installer.Install(false, false); return; }
             if (a.Contains("--install-scrcpy")) { InstallScrcpyTest(); return; }
             if (a.Contains("--diagnose")) { Diagnose(); return; }
+            if (a.Contains("--update-test")) { UpdateTest(); return; }
+            // 업데이트 직후: 옛 앱이 트레이·adb 서버를 정리하고 끝날 때까지 기다린다
+            var au = a.IndexOf("--after-update");
+            if (au >= 0 && au + 1 < a.Count && int.TryParse(a[au + 1], out var oldPid))
+            {
+                try { Process.GetProcessById(oldPid).WaitForExit(20000); } catch { }
+                Installer.RecordVersion();
+            }
+            try { File.Delete(WinForms.Application.ExecutablePath + ".old"); } catch { }
             InitWpf();
             if (a.Contains("--snapshot")) { Snapshot(args[a.IndexOf("--snapshot") + 1]); return; }
 
@@ -110,6 +121,21 @@ namespace WirelessAdbReconnect
             try { Mirror.Install(new Progress<int>(_ => { })).GetAwaiter().GetResult(); result = "ok=" + (Mirror.Find() ?? "null"); }
             catch (Exception ex) { result = "error=" + ex.Message; }
             File.WriteAllText(Path.Combine(Paths.Data, "scrcpy-install.txt"), result + "\r\n", Encoding.UTF8);
+        }
+
+        /// (개발용) 최신 릴리스를 받아 자기 자신을 바꾼다 — 받기·체크섬·서명·교체 확인
+        static void UpdateTest()
+        {
+            string result;
+            try
+            {
+                var v = Updater.FetchLatest();
+                Updater.DownloadAndReplace(v, WinForms.Application.ExecutablePath);
+                result = "ok=" + v;
+            }
+            catch (Exception ex) { result = "error=" + ex.Message; }
+            Directory.CreateDirectory(Paths.Data);
+            File.WriteAllText(Path.Combine(Paths.Data, "update-test.txt"), result + "\r\n", Encoding.UTF8);
         }
 
         static void Diagnose()

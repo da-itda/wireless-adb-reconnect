@@ -279,6 +279,8 @@ final class Reviver {
     private(set) var adb: String?
     private(set) var server: Process?       // 앱이 소유한 nodaemon 서버
     private var causes: [String] = []
+    /// 마지막 다시 붙이기에서 로컬 네트워크 권한 문제가 보였는지 → 메뉴의 '로컬 네트워크 권한 열기'를 보여 줌
+    private(set) var needsPermission = false
     /// 다시 붙이기와 페어링이 동시에 서버를 띄우지 않게 (서버를 바꾸는 작업은 한 번에 하나)
     private let serverLock = NSRecursiveLock()
     private let defaults = UserDefaults.standard
@@ -406,7 +408,8 @@ final class Reviver {
         let quick = order.count
         if phone != .permissionDenied { order += [.ownServer, .ownServerBonjour] }
         if phone != .notFound { order.append(.terminalNoItda) }
-        if let w = winner, let i = order.firstIndex(of: w), i > quick {
+        // 터미널 폴백은 창이 뜨고 Terminal이 창을 복원하며 다시 실행해서, 기억해도 앞당기지 않는다 (앱 서버가 먼저)
+        if let w = winner, w != .terminalNoItda, let i = order.firstIndex(of: w), i > quick {
             order.remove(at: i); order.insert(w, at: quick)
         }
         log(L("시도 순서: ", "Order: ") + "\(order.map(\.title))")
@@ -416,6 +419,7 @@ final class Reviver {
             log(L("▶ 시도: ", "▶ Trying: ") + s.title)
             if attempt(s, phone: phone) {
                 winner = s
+                needsPermission = s == .terminalNoItda   // 터미널로만 붙으면 앱에는 권한이 없는 것
                 if let d = connected(), d.isIPPort { lastAddr = d.serial }
                 return finish(true, L("다시 붙었어요 — ", "Reconnected — ") + s.title)
             }
@@ -427,6 +431,7 @@ final class Reviver {
 
         var needsPermission = causes.contains { $0.contains("로컬 네트워크 권한") || $0.contains("Local Network permission") }
         if case .unreachable = phone { needsPermission = true }
+        self.needsPermission = needsPermission
         if needsPermission { NSWorkspace.shared.open(localNetworkSettings) }
         return finish(false, causes.first ?? L("원인을 찾지 못했어요 — 진단 보기를 확인해 주세요", "Unknown cause — check Diagnostics"))
     }
@@ -529,7 +534,8 @@ final class Reviver {
 
 // MARK: - 메뉴 막대 UI
 
-/// 메뉴 막대 상태 아이콘: 사용자 심볼(안드로이드 머리 + 전파). 몸체는 메뉴 막대 글자색, 전파는 상태색
+/// 메뉴 막대 상태 아이콘: 사용자 심볼(안드로이드 머리 + 전파). 몸체는 검정(밝은 막대)·흰색(어두운 막대), 전파는 상태색
+/// labelColor는 메뉴 막대에서 반투명 회색(#585858)으로 풀려 몸체·전파가 같은 회색이 돼서 쓰지 않는다
 /// 회색 = 연결됨 (초록은 메뉴 막대에서 잘 안 보여서, 2026-10-22 사용자 결정), 빨강 = 끊김, 주황 = 다시 붙이는 중
 enum LinkState { case connected, disconnected, working }
 
@@ -551,7 +557,7 @@ func statusImage(_ state: LinkState) -> NSImage {
             rect.fill(using: .sourceAtop)
             ctx.endTransparencyLayer()
         }
-        paint(statusMasks.body, .labelColor)
+        paint(statusMasks.body, dark ? .white : .black)
         paint(statusMasks.waves, waves)
         return true
     }
@@ -560,46 +566,18 @@ func statusImage(_ state: LinkState) -> NSImage {
     return img
 }
 
-/// 메뉴 맨 위: 지금 상태와 기기
-final class StatusHeader: NSView {
-    let dot = NSView()
-    let title = NSTextField(labelWithString: L("확인 중…", "Checking…"))
-    let detail = NSTextField(labelWithString: "")
-
-    init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 280, height: 58))
-        let icon = NSImageView(image: NSApp.applicationIconImage)
-        icon.frame = NSRect(x: 14, y: 11, width: 36, height: 36)
-        dot.frame = NSRect(x: 60, y: 33, width: 8, height: 8)
-        dot.wantsLayer = true
-        dot.layer?.cornerRadius = 4
-        title.font = .systemFont(ofSize: 13, weight: .semibold)
-        title.frame = NSRect(x: 74, y: 29, width: 196, height: 17)
-        detail.font = .systemFont(ofSize: 11)
-        detail.textColor = .secondaryLabelColor
-        detail.frame = NSRect(x: 60, y: 11, width: 210, height: 15)
-        [icon, dot, title, detail].forEach(addSubview)
-    }
-
-    required init?(coder: NSCoder) { fatalError() }
-
-    func show(_ state: LinkState, _ title: String, _ detail: String) {
-        dot.layer?.backgroundColor = (state == .connected ? NSColor.systemGray : state == .disconnected ? NSColor.systemRed : NSColor.systemOrange).cgColor
-        self.title.stringValue = title
-        self.detail.stringValue = detail
-    }
-}
-
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let reviver = Reviver()
     let queue = DispatchQueue(label: "revive")
     var item: NSStatusItem!
-    let header = StatusHeader()
-    let methodLine = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-    let reviveItem = NSMenuItem(title: L("지금 다시 붙이기", "Reconnect now"), action: #selector(reviveNow), keyEquivalent: "r")
+    /// 연결 상태에 따라: 연결됨 · 기기 이름(누를 수 없음) / 연결하는 중… / 기기 다시 연결하기
+    let reviveItem = NSMenuItem(title: L("확인 중…", "Checking…"), action: #selector(reviveNow), keyEquivalent: "r")
     let loginItem = NSMenuItem(title: L("로그인할 때 자동 실행", "Launch at login"), action: #selector(toggleLogin), keyEquivalent: "")
+    let permissionItem = NSMenuItem(title: L("로컬 네트워크 권한 열기", "Open Local Network settings"), action: #selector(openSettings), keyEquivalent: "")
     let mirror = ScreenMirror()
-    let mirrorItem = NSMenuItem(title: L("화면 미러링 시작", "Start screen mirroring"), action: #selector(mirrorNow), keyEquivalent: "m")
+    let mirrorItem = NSMenuItem(title: L("화면 미러링 시작하기", "Start screen mirroring"), action: #selector(mirrorNow), keyEquivalent: "m")
+    let updater = Updater()
+    let updateItem = NSMenuItem(title: "", action: #selector(updateClicked), keyEquivalent: "")
     let mirrorOptions = NSMenu()
     var busy = false
     var setupWindow: NSWindow?
@@ -609,11 +587,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = statusImage(.working)
         let menu = NSMenu()
-        let headerItem = NSMenuItem()
-        headerItem.view = header
-        menu.addItem(headerItem)
-        methodLine.isEnabled = false
-        menu.addItem(methodLine)
+        menu.autoenablesItems = false   // 항목 활성/비활성은 상태에 따라 직접 정한다
+        loginItem.target = self; menu.addItem(loginItem)
+        menu.addItem(withTitle: L("휴대폰 페어링…", "Pair phone…"), action: #selector(showPair), keyEquivalent: "p").target = self
+        permissionItem.target = self; permissionItem.isHidden = true; menu.addItem(permissionItem)
         menu.addItem(.separator())
         reviveItem.target = self; menu.addItem(reviveItem)
         mirrorItem.target = self; menu.addItem(mirrorItem)
@@ -621,16 +598,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         optionsItem.submenu = mirrorOptions
         buildMirrorOptions()
         menu.addItem(optionsItem)
-        menu.addItem(withTitle: L("휴대폰 페어링…", "Pair phone…"), action: #selector(showPair), keyEquivalent: "p").target = self
-        menu.addItem(withTitle: L("진단 보기", "Diagnostics"), action: #selector(openLog), keyEquivalent: "l").target = self
         menu.addItem(.separator())
-        loginItem.target = self; menu.addItem(loginItem)
         menu.addItem(withTitle: L("설정…", "Settings…"), action: #selector(showSetup), keyEquivalent: ",").target = self
-        menu.addItem(withTitle: L("로컬 네트워크 권한 열기", "Open Local Network settings"), action: #selector(openSettings), keyEquivalent: "").target = self
-        menu.addItem(.separator())
+        menu.addItem(withTitle: L("진단 보기", "Diagnostics"), action: #selector(openLog), keyEquivalent: "l").target = self
+        updateItem.target = self; menu.addItem(updateItem)
         menu.addItem(withTitle: L("종료 (adb 서버도 종료)", "Quit (stops adb server)"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.menu = menu
         Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in self?.refresh() }
+        // 업데이트: 실행할 때, 그 뒤 한 시간마다 '일주일이 지났는지' 보고 확인
+        updater.onChange = { [weak self] in self?.updateUpdateItem() }
+        updateUpdateItem()
+        updater.checkIfDue()
+        Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { [weak self] _ in self?.updater.checkIfDue() }
         Notifier.shared.onRetry = { [weak self] in self?.reviveNow() }
         mirror.onExit = { [weak self] code, byUser in self?.mirrorDidExit(code: code, byUser: byUser) }
         Notifier.shared.setup()
@@ -705,8 +684,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         guard !busy else { return }
         busy = true
-        mirrorItem.isEnabled = false; reviveItem.isEnabled = false
-        show(.working, L("미러링 준비 중…", "Preparing mirroring…"), L("휴대폰 연결을 확인하고 있어요", "Checking the phone connection"))
+        mirrorItem.isEnabled = false
+        show(.working, L("미러링 준비 중…", "Preparing mirroring…"))
         queue.async {
             var d = self.reviver.connected()
             if d == nil {
@@ -721,7 +700,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             DispatchQueue.main.async {
                 self.busy = false
-                self.mirrorItem.isEnabled = true; self.reviveItem.isEnabled = true
+                self.mirrorItem.isEnabled = true
                 self.refresh()
             }
         }
@@ -737,19 +716,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func updateMirrorItem() {
-        mirrorItem.title = mirror.isRunning ? L("화면 미러링 중지", "Stop screen mirroring") : L("화면 미러링 시작", "Start screen mirroring")
+        mirrorItem.title = mirror.isRunning ? L("화면 미러링 중지", "Stop screen mirroring") : L("화면 미러링 시작하기", "Start screen mirroring")
     }
 
-    func show(_ state: LinkState, _ title: String, _ detail: String) {
+    /// 메뉴 막대 아이콘 + '기기 다시 연결하기' 자리. 끊겼을 때만 누를 수 있다
+    func show(_ state: LinkState, _ title: String) {
         item.button?.image = statusImage(state)
-        header.show(state, title, detail)
+        item.button?.toolTip = "\(appShortName) — \(title)"
+        reviveItem.title = title
+        reviveItem.isEnabled = state == .disconnected
     }
 
     @objc func reviveNow() {
         guard !busy else { return }
         busy = true
-        reviveItem.isEnabled = false
-        show(.working, L("다시 붙이는 중…", "Reconnecting…"), L("원인을 찾고 순서대로 시도하고 있어요", "Finding the cause and trying fixes"))
+        show(.working, L("연결하는 중…", "Connecting…"))
         let started = Date()
         queue.async {
             let r = self.reviver.revive()
@@ -762,7 +743,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             DispatchQueue.main.async {
                 self.busy = false
-                self.reviveItem.isEnabled = true
                 self.refresh()
             }
         }
@@ -772,17 +752,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !busy else { return }
         queue.async {
             let d = self.reviver.connected()
-            let w = self.reviver.winner?.title
-            let addr = self.reviver.lastAddr.map { String($0.split(separator: ":").first ?? "") }
             DispatchQueue.main.async {
                 guard !self.busy else { return }
                 if let d {
-                    self.show(.connected, L("연결됨", "Connected"), "\(d.model ?? L("휴대폰", "Phone")) · " + L("무선", "Wireless") + (addr.map { " · \($0)" } ?? "")
-                              + (self.mirror.isRunning ? L(" · 미러링 중", " · Mirroring") : ""))
+                    self.show(.connected, L("연결됨 · ", "Connected · ") + (d.model ?? L("휴대폰", "Phone")) + (self.mirror.isRunning ? L(" · 미러링 중", " · Mirroring") : ""))
                 } else {
-                    self.show(.disconnected, L("연결 안 됨", "Disconnected"), L("⌘R 또는 앱 아이콘을 누르면 다시 붙여요", "Press ⌘R or open the app to reconnect"))
+                    self.show(.disconnected, L("기기 다시 연결하기", "Reconnect device"))
                 }
-                self.methodLine.title = L("마지막 성공 방법: ", "Last working fix: ") + (w ?? "-")
+                self.permissionItem.isHidden = !self.reviver.needsPermission
                 self.loginItem.state = AppInstall.loginItemEnabled ? .on : .off
                 self.updateMirrorItem()
             }
@@ -817,6 +794,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func openLog() { NSWorkspace.shared.open(logURL) }
+
+    // MARK: 업데이트
+
+    func updateUpdateItem() {
+        let v = updater.current
+        updateItem.view = nil
+        switch updater.state {
+        case .unknown:
+            updateItem.title = L("업데이트 확인 (\(v))", "Check for updates (\(v))"); updateItem.isEnabled = true
+        case .latest:
+            updateItem.title = L("최신 버전 (\(v))", "Up to date (\(v))"); updateItem.isEnabled = false
+        case .available(let n):
+            updateItem.title = L("업데이트 (\(v) → \(n))", "Update (\(v) → \(n))"); updateItem.isEnabled = true
+        case .checking:
+            updateItem.view = SpinnerMenuView(L("업데이트 확인 중…", "Checking for updates…"))
+        case .installing(let n):
+            updateItem.view = SpinnerMenuView(L("업데이트하는 중… (\(n))", "Updating… (\(n))"))
+        }
+    }
+
+    @objc func updateClicked() {
+        if case .available = updater.state { updater.install() } else { updater.check() }
+    }
     @objc func openSettings() { NSWorkspace.shared.open(localNetworkSettings) }
 }
 

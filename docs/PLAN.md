@@ -99,7 +99,18 @@ Windows scrcpy 설치 방법: GitHub 릴리스 zip(`scrcpy-win64-v5.0.1.zip` 약
 - [x] 3. Windows: 트레이 ico 4종(작업 표시줄 밝기 `SystemUsesLightTheme`, 테마 바꾸면 즉시 반영), 안내 문구 — 15%
 - [x] 4. 빌드·확인 (Mac 빌드·스냅샷, PC 빌드·스냅샷·트레이 ico 렌더), README 스크린샷 교체 — 20%
 - [x] 5. 문서, 커밋, 옛 아이콘 `_archive/old-icons-2026-10-22` — 10%
-- [ ] 6. 배포: Mac 공증 zip, Windows EV 서명 exe, 개인정보 검사, `public` 푸시, 릴리스 v1.2.0 — 20%
+- [x] 6. 배포: Mac 공증 zip, Windows EV 서명 exe, 개인정보 검사, `public` 푸시, 릴리스 v1.2.0 — 20% (2026-10-22 완료. Mac 1.2.0 `/Applications` 교체 후 실제 메뉴 막대에서 회색 아이콘·재연결 확인. 미확인: Windows 실제 트레이 표시 — ico 렌더로만 확인)
+
+### 7차 — 메뉴 개편 + 앱 안 업데이트 (2026-10-23~)
+배경 (2026-10-23 사용자): v1.2.0 Mac 아이콘 몸체가 메뉴 막대에서 회색(`labelColor`가 `#585858`로 풀림) → 검정/흰색 고정. 확인용 새 빌드가 '터미널에서 서버 실행'을 이긴 방법으로 기억해 다시 붙일 때마다 터미널 창이 뜸 → 터미널 폴백은 앞당기지 않음.
+결정 (2026-10-23 사용자): 메뉴 순서 = ✓로그인할 때 자동 실행 · 휴대폰 페어링 · 로컬 네트워크 권한 열기(권한 문제일 때만, Mac) │ 기기 다시 연결하기(연결됨이면 상태 표시) · 화면 미러링 시작하기 · 미러링 옵션 │ 설정 · 진단 보기 · 업데이트(현재 버전) · 종료. 맨 위 상태 표시·'마지막 성공 방법' 줄은 없앰. Mac·Windows 모두.
+업데이트: 일주일에 한 번 GitHub 최신 릴리스 확인 → 최신이면 '최신 버전 (x.y.z)' 고정, 새 버전이면 누를 때 받기(진행 동그라미) → SHA256SUMS 확인 → 서명 확인(Mac: 같은 Team ID + 공증 / Windows: Authenticode 유효 + 같은 게시자) → 앱 교체 → 다시 실행. 실패하면 기존 앱 유지.
+- [x] 0. Mac 아이콘 몸체 검정/흰색, 터미널 폴백 앞당기지 않음, 페어링 메뉴 위로 — 커밋 `90b38cb` `f936415` `3843f88`
+- [x] 1. Mac 메뉴 재구성 (상태에 따라 바뀌는 다시 연결 항목, 권한 항목 숨김) — 25%
+- [x] 2. Mac 업데이트 확인·설치 (`mac/Update.swift`) — 35% (실제 확인: `WAR_FAKE_VERSION=1.0.0` 사본 → 메뉴 '업데이트' → v1.2.0 공증 앱으로 교체·다시 실행)
+- [x] 3. Windows 메뉴 재구성 + 업데이트 (`Updater.cs`, `--after-update <pid>`) — 30% (PC `--update-test`: 서명 없는 개발 exe → v1.2.0 서명 exe로 교체, SHA256 일치)
+- [x] 4. 확인(Mac 실제 메뉴 캡처·업데이트 실제 교체, PC 빌드·업데이트 무화면 테스트), 문서, 커밋 — 10% (미확인: Windows 실제 트레이 메뉴 모양, 메뉴에서 누르는 Windows 업데이트 흐름)
+- [x] 5. 배포 1.3.0 (2026-10-23 사용자 요청): Mac 공증 zip·`/Applications` 교체, Windows EV 서명 exe, 개인정보 검사, `public` 푸시, 릴리스 v1.3.0
 
 ### 공개 (2026-10-15)
 - 저장소: https://github.com/da-itda/wireless-adb-reconnect (공개, MIT) · 릴리스 v1.0.0 (Mac Universal 공증 zip, Windows exe, SHA256SUMS)
@@ -107,6 +118,8 @@ Windows scrcpy 설치 방법: GitHub 릴리스 zip(`scrcpy-win64-v5.0.1.zip` 약
 - 다음 공개 방법: `git commit-tree "HEAD^{tree}" -p public -m "<메시지>"` → `git branch -f public <커밋>` → `git push origin public:main` (푸시는 사용자 요청 때만)
 - v1.1.0 (2026-10-15): OS 언어 자동 — 한국어 OS는 한국어, 그 밖은 영어 (Mac `L()`·Windows `L()`/XAML `{local:T}`, 강제는 `WAR_LANG=ko|en`). README 언어별 스크린샷
 - v1.1.1 (2026-10-15): Windows EV 코드 서명(게시자 LaonCross Inc., 타임스탬프) — `tools/windows_pc.sh build && tools/windows_pc.sh sign` (PC에서 토큰 PIN). Mac 재공증
+- v1.2.0 (2026-10-22): 화면 미러링(scrcpy) + 새 아이콘(회색=연결됨, 빨강=끊김). Mac 공증 프로필 `NOTARY_PROFILE=clipboard-itda-notary` (같은 개발자 계정), 산출물 `dist/release-1.2.0/`
+- v1.3.0 (2026-10-23): 메뉴 개편 + 앱 안 업데이트(주 1회 확인), Mac 아이콘 몸체 검정/흰색, 터미널 폴백 반복 수정. 산출물 `dist/release-1.3.0/`. 1.2.0 이하는 업데이트 기능이 없어 한 번은 직접 설치
 - 공개 전 개인정보 검사 → 통과할 때만 푸시
 - 다음 후보: Mac 기본 알림 원인 분리, 홍보 글
 

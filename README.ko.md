@@ -38,8 +38,9 @@ Android 11부터 생긴 **무선 디버깅**은 편하지만 자주 끊깁니다
 - **원인 진단** — adb 서버를 누가 띄웠는지, 로컬 네트워크 권한(macOS), mDNS로 휴대폰이 보이는지, 현재 IP:포트, `offline`·`unauthorized` 기기, adb 버전 충돌, 네트워크 '공용' 설정(Windows), 페어링 풀림
 - **순서대로 시도하고 기억** — 처음 성공한 방법에서 멈추고, 다음엔 그 방법부터 시도합니다.
 - **QR 페어링** — Android Studio와 같은 방식, 페어링 코드 입력도 지원. 페어링 중 휴대폰 IP가 바뀌어도 자동으로 다시 시도합니다.
-- **화면 미러링** — *화면 미러링 시작*(macOS ⌘M, Windows 트레이 메뉴 또는 `WirelessADBReconnect.exe --mirror`)으로 휴대폰 화면을 컴퓨터에 띄우고 조작합니다 ([scrcpy](https://github.com/Genymobile/scrcpy) 사용). 앱이 붙여 둔 무선 연결과 adb 서버를 그대로 쓰므로, scrcpy가 서버를 죽여 연결이 끊기는 일이 없습니다. 끊겨 있으면 먼저 다시 붙인 뒤 띄웁니다. 옵션: 화질, 소리, 항상 위, 폰 화면 끄기, 녹화.
+- **화면 미러링** — *화면 미러링 시작하기*(macOS ⌘M, Windows 트레이 메뉴 또는 `WirelessADBReconnect.exe --mirror`)으로 휴대폰 화면을 컴퓨터에 띄우고 조작합니다 ([scrcpy](https://github.com/Genymobile/scrcpy) 사용). 앱이 붙여 둔 무선 연결과 adb 서버를 그대로 쓰므로, scrcpy가 서버를 죽여 연결이 끊기는 일이 없습니다. 끊겨 있으면 먼저 다시 붙인 뒤 띄웁니다. 옵션: 화질, 소리, 항상 위, 폰 화면 끄기, 녹화.
 - **설치 마법사** — adb가 없으면 Google 공식 **platform-tools(약 15MB)** 설치(또는 Android Studio), 앱 설치, 로그인 시 자동 실행, 그리고 화면 미러링용 scrcpy를 함께 설치할지 묻습니다 (Windows: GitHub 릴리스 zip 약 11MB, macOS: Homebrew). 이미 된 단계는 건너뜁니다.
+- **앱 안 업데이트** — 일주일에 한 번 새 버전을 확인하고, 메뉴의 *업데이트*를 누르면 받아서 바꾼 뒤 다시 실행합니다. 받은 파일은 체크섬과 서명(같은 개발자, macOS는 Apple 공증)이 맞을 때만 설치합니다.
 - **가볍고 네이티브**
   - macOS 13+: Swift / SwiftUI, 서명·공증 완료
   - Windows 10/11: 서명된 `.exe` 하나(약 0.7MB), 기본 내장 .NET Framework 4.8, **x64·ARM64**

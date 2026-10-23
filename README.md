@@ -40,6 +40,7 @@ The usual fix is `adb kill-server`, start it again, look up the new IP:port, `ad
 - **QR pairing** like Android Studio, plus pairing-code fallback. Retries automatically if the phone's IP changes mid-pairing.
 - **Screen mirroring** — *Start screen mirroring* (macOS ⌘M, Windows tray menu or `WirelessADBReconnect.exe --mirror`) shows and controls your phone on the computer via [scrcpy](https://github.com/Genymobile/scrcpy). It reuses the wireless connection and adb server the app keeps alive, so scrcpy never kills the server. If the phone is disconnected it reconnects first. Options: quality, audio, always on top, turn phone screen off, record.
 - **Setup wizard** — installs Google's official **platform-tools (~15 MB)** if adb is missing (or Android Studio, if you prefer), installs the app, sets launch-at-login, and asks whether to also install scrcpy for screen mirroring (Windows: GitHub release zip ~11 MB; macOS: Homebrew). Steps already done are skipped.
+- **In-app updates** — checks for a new version once a week; choose *Update* in the menu to download, replace and relaunch. The download is installed only if its checksum and signature (same developer; Apple notarization on macOS) match.
 - **Native and tiny**
   - macOS 13+: Swift / SwiftUI, signed & notarized
   - Windows 10/11: single signed `.exe` (~0.7 MB) on built-in .NET Framework 4.8, **x64 and ARM64**

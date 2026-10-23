@@ -56,6 +56,13 @@ namespace WirelessAdbReconnect
             Log.Write(L("설치 완료: ", "Installed: ") + Paths.InstalledExe);
         }
 
+        /// 업데이트 뒤 '설정 > 앱'에 보이는 버전을 맞춘다
+        public static void RecordVersion()
+        {
+            if (!IsRunningInstalled) return;
+            using (var k = Registry.CurrentUser.OpenSubKey(UninstallKey, true)) k?.SetValue("DisplayVersion", Updater.AppVersion);
+        }
+
         public static void Uninstall(bool quiet = false)
         {
             if (!quiet && WinForms.MessageBox.Show(L($"{AppInfo.Name}를 제거할까요?\n(설치한 adb와 기록은 남겨 둡니다)", $"Uninstall {AppInfo.Name}?\n(adb and logs are kept)"), AppInfo.Name,
