@@ -65,7 +65,7 @@ namespace WirelessAdbReconnect
 
         public static void Uninstall(bool quiet = false)
         {
-            if (!quiet && WinForms.MessageBox.Show(L($"{AppInfo.Name}를 제거할까요?\n(설치한 adb와 기록은 남겨 둡니다)", $"Uninstall {AppInfo.Name}?\n(adb and logs are kept)"), AppInfo.Name,
+            if (!quiet && WinForms.MessageBox.Show(L("{0}를 제거할까요?\n(설치한 adb와 기록은 남겨 둡니다)", "Uninstall {0}?\n(adb and logs are kept)", AppInfo.Name), AppInfo.Name,
                     WinForms.MessageBoxButtons.OKCancel, WinForms.MessageBoxIcon.Question) != WinForms.DialogResult.OK) return;
             StopOtherInstances();
             AutoStart = false;

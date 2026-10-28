@@ -30,15 +30,15 @@ cat > "$APP/Contents/Info.plist" <<EOF
     <key>CFBundleName</key><string>ADB Reconnect</string>
     <key>CFBundleDisplayName</key><string>$NAME</string>
     <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
-    <key>CFBundleVersion</key><string>1.3.0</string>
-    <key>CFBundleShortVersionString</key><string>1.3.0</string>
+    <key>CFBundleVersion</key><string>1.3.1</string>
+    <key>CFBundleShortVersionString</key><string>1.3.1</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleExecutable</key><string>WirelessADBReconnect</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>LSMinimumSystemVersion</key><string>13.0</string>
     <key>LSUIElement</key><true/>
     <key>CFBundleDevelopmentRegion</key><string>en</string>
-    <key>CFBundleLocalizations</key><array><string>en</string><string>ko</string></array>
+    <key>CFBundleLocalizations</key><array><string>en</string><string>ko</string><string>ja</string><string>zh-Hans</string><string>zh-Hant</string></array>
     <!-- 앱이 띄운 adb 서버가 같은 Wi-Fi의 휴대폰에 붙으려면 로컬 네트워크 권한이 필요 -->
     <key>NSLocalNetworkUsageDescription</key>
     <string>Needed to find your phone on Wi-Fi and reconnect wireless debugging.</string>
@@ -52,10 +52,16 @@ cat > "$APP/Contents/Info.plist" <<EOF
 </plist>
 EOF
 
-# 권한 안내 문구: 한국어 OS는 한국어, 그 밖에는 영어 (앱 화면과 같은 규칙)
+# 언어: macOS가 이 lproj들 중에서 고른다 (없는 언어는 영어). 권한 안내문(InfoPlist.strings)과 앱 화면이 같은 규칙
+# 한국어·영어 화면 문구는 코드 안에, 일본어·중국어는 assets/i18n/<lang>.strings → <lang>.lproj/App.strings
 mkdir -p "$APP/Contents/Resources/en.lproj" "$APP/Contents/Resources/ko.lproj"
 echo '"NSLocalNetworkUsageDescription" = "Needed to find your phone on Wi-Fi and reconnect wireless debugging.";' > "$APP/Contents/Resources/en.lproj/InfoPlist.strings"
 echo '"NSLocalNetworkUsageDescription" = "무선 디버깅 중인 휴대폰을 찾고 다시 연결하기 위해 로컬 네트워크 접근이 필요합니다.";' > "$APP/Contents/Resources/ko.lproj/InfoPlist.strings"
+for lang in ja zh-Hans zh-Hant; do
+    mkdir -p "$APP/Contents/Resources/$lang.lproj"
+    cp "$ROOT/assets/i18n/$lang.strings" "$APP/Contents/Resources/$lang.lproj/App.strings"
+    cp "$ROOT/assets/i18n/$lang.InfoPlist.strings" "$APP/Contents/Resources/$lang.lproj/InfoPlist.strings"
+done
 
 SIGN_ID="${SIGN_ID:-$(security find-identity -v -p codesigning | awk -F'"' '/Developer ID Application/ {print $2; exit}')}"
 if [ -n "$SIGN_ID" ]; then

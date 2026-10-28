@@ -181,7 +181,7 @@ final class PairModel: ObservableObject {
             set(L("연결됐어요", "Connected"), .success)
             DispatchQueue.main.async { self.onPaired() }
         } else {
-            set(L("페어링은 됐지만 아직 연결되지 않았어요. 메뉴 막대에서 '지금 다시 붙이기'를 눌러 주세요.", "Paired, but not connected yet. Choose 'Reconnect now' in the menu bar."), .error)
+            set(L("페어링은 됐지만 아직 연결되지 않았어요. 메뉴 막대에서 '기기 다시 연결하기'를 눌러 주세요.", "Paired, but not connected yet. Choose 'Reconnect device' in the menu bar."), .error)
         }
         return true
     }
@@ -566,7 +566,7 @@ struct InstallStep: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(L("화면 미러링(scrcpy)도 설치", "Also install screen mirroring (scrcpy)")).font(.system(size: 14, weight: .semibold))
-                    Text(m.hasScrcpy ? L("이미 설치됨 · 메뉴 '화면 미러링 시작'(⌘M)", "Already installed · menu 'Start screen mirroring' (⌘M)")
+                    Text(m.hasScrcpy ? L("이미 설치됨 · 메뉴 '화면 미러링 시작하기'(⌘M)", "Already installed · menu 'Start screen mirroring' (⌘M)")
                          : m.hasBrew ? L("휴대폰 화면을 Mac에 띄우고 조작 · Homebrew로 설치 · 1~5분", "See and control your phone on the Mac · via Homebrew · 1–5 min")
                                      : L("Homebrew(brew.sh)가 필요해요 · 설치 후 설정에서 켤 수 있어요", "Needs Homebrew (brew.sh) · turn on later in Settings"))
                         .font(.system(size: 12)).foregroundColor(.muted)
@@ -604,7 +604,7 @@ struct PairContent: View {
                     .background(RoundedRectangle(cornerRadius: 16).fill(Color.white).shadow(color: Color.navy.opacity(0.08), radius: 9, y: 6))
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.line))
                 VStack(alignment: .leading, spacing: 14) {
-                    numbered(1) { Text(L("휴대폰과 이 Mac을 ", "Connect your phone and this Mac to the ")) + Text(L("같은 Wi‑Fi", "same Wi‑Fi")).bold() + Text(L("에 연결", "")) }
+                    numbered(1) { boldText(L("휴대폰과 이 Mac을 **같은 Wi‑Fi**에 연결", "Connect your phone and this Mac to the **same Wi‑Fi**")) }
                     numbered(2) {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(L("휴대폰에서 무선 디버깅 열기", "On the phone, open Wireless debugging"))
@@ -612,7 +612,7 @@ struct PairContent: View {
                                 .padding(.horizontal, 8).padding(.vertical, 4).background(RoundedRectangle(cornerRadius: 6).fill(Color.soft))
                         }
                     }
-                    numbered(3) { isKorean ? Text("QR 코드로 기기 페어링").bold() + Text("을 눌러 왼쪽 QR 찍기") : Text("Tap ") + Text("Pair device with QR code").bold() + Text(" and scan this QR") }
+                    numbered(3) { boldText(L("**QR 코드로 기기 페어링**을 눌러 왼쪽 QR 찍기", "Tap **Pair device with QR code** and scan this QR")) }
                 }
             }
             if pair.codeMode {
@@ -638,6 +638,11 @@ struct PairContent: View {
         }
         .font(.system(size: 13))
         .onAppear { if autoStart { pair.start() } }
+    }
+
+    /// "… **굵게** …" — 언어마다 굵은 부분의 자리가 달라서 문장 하나로 번역한다
+    func boldText(_ s: String) -> Text {
+        Text((try? AttributedString(markdown: s)) ?? AttributedString(s))
     }
 
     func numbered<V: View>(_ n: Int, @ViewBuilder _ content: () -> V) -> some View {
@@ -702,7 +707,7 @@ struct DoneStep: View {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "info.circle").foregroundColor(.muted)
                 Text(L("끊기면 메뉴 막대의 아이콘을 누르거나, 앱을 다시 열기만 하면 돼요. 아이콘의 전파가 회색이면 연결, 빨강이면 끊김이에요.", "If it drops, click the menu bar icon or just open the app again. Gray waves = connected, red = disconnected.")
-                     + (ScreenMirror.isInstalled ? L(" 메뉴의 '화면 미러링 시작'(⌘M)으로 휴대폰 화면을 띄울 수 있어요.", " 'Start screen mirroring' (⌘M) in the menu shows your phone's screen.") : ""))
+                     + (ScreenMirror.isInstalled ? L(" 메뉴의 '화면 미러링 시작하기'(⌘M)으로 휴대폰 화면을 띄울 수 있어요.", " 'Start screen mirroring' (⌘M) in the menu shows your phone's screen.") : ""))
                     .font(.system(size: 12)).foregroundColor(.ink2).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
@@ -814,7 +819,7 @@ func saveSnapshots(to dir: URL) {
         NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
             bg.setFill(); NSRect(x: 0, y: 0, width: 96, height: 24).fill()
             for (i, s) in [LinkState.connected, .disconnected, .working].enumerated() {
-                statusImage(s).draw(in: NSRect(x: 9 + i * 30, y: 3, width: 18, height: 18))
+                statusImage(s).draw(in: NSRect(x: 6 + i * 30, y: 3, width: 24, height: 18))
             }
         }
         NSGraphicsContext.restoreGraphicsState()

@@ -61,7 +61,7 @@ namespace WirelessAdbReconnect
                 // 사용자가 창을 닫거나 메뉴에서 중지한 경우는 조용히. 그 밖(연결 끊김 등)은 알림.
                 if (!byUser && code != 0)
                     tray.ShowBalloonTip(8000, L("미러링이 끊겼어요", "Mirroring stopped"),
-                        L("무선 연결이 끊겼을 수 있어요. '화면 미러링 시작'을 다시 누르면 먼저 다시 붙이고 미러링해요.", "Wireless debugging may have dropped. Choose 'Start screen mirroring' again to reconnect and mirror."), ToolTipIcon.None);
+                        L("무선 연결이 끊겼을 수 있어요. '화면 미러링 시작하기'를 다시 누르면 먼저 다시 붙이고 미러링해요.", "Wireless debugging may have dropped. Choose 'Start screen mirroring' again to reconnect and mirror."), ToolTipIcon.None);
                 Refresh();
             }, null);
             menu.Items.Add(new ToolStripSeparator());
@@ -203,7 +203,7 @@ namespace WirelessAdbReconnect
                 ui.Post(_ =>
                 {
                     lastOk = ok;
-                    if (ok) tray.ShowBalloonTip(5000, L("다시 연결됐어요", "Reconnected"), $"{d?.Model ?? d?.Serial ?? L("휴대폰", "Phone")} · " + L($"{secs}초 걸렸어요", $"took {secs}s"), ToolTipIcon.None);
+                    if (ok) tray.ShowBalloonTip(5000, L("다시 연결됐어요", "Reconnected"), $"{d?.Model ?? d?.Serial ?? L("휴대폰", "Phone")} · " + L("{0}초 걸렸어요", "took {0}s", secs), ToolTipIcon.None);
                     else tray.ShowBalloonTip(8000, L("연결하지 못했어요", "Couldn't reconnect"), message, ToolTipIcon.None);
                     busy = false;
                     Refresh();
@@ -250,11 +250,11 @@ namespace WirelessAdbReconnect
             var v = updater.Current;
             switch (updater.State)
             {
-                case Updater.Kind.Unknown: updateItem.Text = L($"업데이트 확인 ({v})", $"Check for updates ({v})"); break;
-                case Updater.Kind.Latest: updateItem.Text = L($"최신 버전 ({v})", $"Up to date ({v})"); break;
-                case Updater.Kind.Available: updateItem.Text = L($"업데이트 ({v} → {updater.Latest})", $"Update ({v} → {updater.Latest})"); break;
+                case Updater.Kind.Unknown: updateItem.Text = L("업데이트 확인 ({0})", "Check for updates ({0})", v); break;
+                case Updater.Kind.Latest: updateItem.Text = L("최신 버전 ({0})", "Up to date ({0})", v); break;
+                case Updater.Kind.Available: updateItem.Text = L("업데이트 ({0} → {1})", "Update ({0} → {1})", v, updater.Latest); break;
                 case Updater.Kind.Checking: updateItem.Text = L("업데이트 확인 중…", "Checking for updates…"); break;
-                case Updater.Kind.Installing: updateItem.Text = L($"업데이트하는 중… ({updater.Latest})", $"Updating… ({updater.Latest})"); break;
+                case Updater.Kind.Installing: updateItem.Text = L("업데이트하는 중… ({0})", "Updating… ({0})", updater.Latest); break;
             }
             updateItem.Enabled = updater.State == Updater.Kind.Unknown || updater.State == Updater.Kind.Available;
             var spinning = updater.State == Updater.Kind.Checking || updater.State == Updater.Kind.Installing;

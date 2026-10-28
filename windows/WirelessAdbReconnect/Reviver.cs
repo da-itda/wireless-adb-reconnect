@@ -176,7 +176,7 @@ namespace WirelessAdbReconnect
                 {
                     Log.Write(L("진단: adb 서버 = ", "Diagnosis: adb server = ") + (owns ? L("이 앱", "this app") : owner.Value.path));
                     if (!owns && !string.Equals(owner.Value.path, Adb, StringComparison.OrdinalIgnoreCase))
-                        AddCause(L($"다른 adb({owner.Value.path})가 서버를 띄움 → 버전이 다르면 서로 서버를 죽여 연결이 끊김 (Android Studio·scrcpy 등)", $"Another adb ({owner.Value.path}) started the server → different versions kill each other's server (Android Studio, scrcpy, etc.)"));
+                        AddCause(L("다른 adb({0})가 서버를 띄움 → 버전이 다르면 서로 서버를 죽여 연결이 끊김 (Android Studio·scrcpy 등)", "Another adb ({0}) started the server → different versions kill each other's server (Android Studio, scrcpy, etc.)", owner.Value.path));
                 }
                 if (before.Any(d => d.State == "offline")) AddCause(L("기기가 offline 상태로 남아 있음", "Device is stuck offline"));
                 if (before.Any(d => d.State == "unauthorized")) AddCause(L("휴대폰에서 디버깅 허용 필요 (unauthorized)", "Allow debugging on the phone (unauthorized)"));
@@ -238,12 +238,12 @@ namespace WirelessAdbReconnect
             }
             else if (!Shell.TcpReachable(phone))
             {
-                AddCause(L($"휴대폰({phone})은 보이지만 접속 안 됨 → 방화벽·VPN·다른 네트워크 확인", $"Phone ({phone}) is visible but unreachable → check firewall, VPN, network"), true);
+                AddCause(L("휴대폰({0})은 보이지만 접속 안 됨 → 방화벽·VPN·다른 네트워크 확인", "Phone ({0}) is visible but unreachable → check firewall, VPN, network", phone), true);
             }
             else
             {
                 // 보이고 접속도 되는데 adb가 거부 → 이 PC가 휴대폰과 페어링되지 않은 경우가 대부분
-                AddCause(L($"휴대폰({phone})은 보이고 네트워크도 정상이지만 adb 연결이 거부됨 → 이 PC와 페어링이 안 됨. 트레이 메뉴 '휴대폰 페어링'으로 페어링하세요", $"Phone ({phone}) is reachable but adb refused → this PC isn't paired. Use 'Pair phone' in the tray menu"), true);
+                AddCause(L("휴대폰({0})은 보이고 네트워크도 정상이지만 adb 연결이 거부됨 → 이 PC와 페어링이 안 됨. 트레이 메뉴 '휴대폰 페어링'으로 페어링하세요", "Phone ({0}) is reachable but adb refused → this PC isn't paired. Use 'Pair phone' in the tray menu", phone), true);
             }
         }
 

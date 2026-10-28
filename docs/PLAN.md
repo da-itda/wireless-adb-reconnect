@@ -112,6 +112,16 @@ Windows scrcpy 설치 방법: GitHub 릴리스 zip(`scrcpy-win64-v5.0.1.zip` 약
 - [x] 4. 확인(Mac 실제 메뉴 캡처·업데이트 실제 교체, PC 빌드·업데이트 무화면 테스트), 문서, 커밋 — 10% (미확인: Windows 실제 트레이 메뉴 모양, 메뉴에서 누르는 Windows 업데이트 흐름)
 - [x] 5. 배포 1.3.0 (2026-10-23 사용자 요청): Mac 공증 zip·`/Applications` 교체, Windows EV 서명 exe, 개인정보 검사, `public` 푸시, 릴리스 v1.3.0
 
+### 8차 — 일본어·중국어 (2026-10-24~)
+결정 (2026-10-24 사용자): 일본어·중국어까지만 지원, 그 밖의 언어는 영어. 중국어는 간체·번체 둘 다.
+방식: 코드의 `L("한국어", "English")`는 그대로 두고, 일본어·중국어는 영어 문구를 키로 `assets/i18n/<ja|zh-Hans|zh-Hant>.strings`에서 찾음(없으면 영어). 값이 들어가는 문구는 `L("… {0}", "… {0}", 값)`. 굵은 글씨가 섞인 문장은 `**굵게**` 한 문장으로(Mac `boldText`, Windows `local:Md.Text`). Mac은 `<lang>.lproj/App.strings`(macOS가 언어 선택), Windows는 exe 리소스. 점검: `python3 tools/i18n.py check`. 휴대폰 메뉴 이름은 AOSP Settings 번역 그대로.
+- [x] 1. 구조: Mac `uiLang`·`L(…, args)`, Windows `Lang.Code`·글꼴(Yu Gothic UI / YaHei UI / JhengHei UI), 권한 메뉴 판단을 문구 대신 플래그로 — 30%
+- [x] 2. 번역 258개 × 3 + Mac 권한 안내문(InfoPlist) — 40%
+- [x] 3. 확인: Mac·Windows 설치 마법사 스냅샷(일·간·번), Mac 실제 메뉴(일본어), PC 빌드 경고 0 — 20% (Windows 스냅샷은 페어링을 시작하지 않게 바꿈)
+- [x] 4. 배포 1.3.1 (2026-10-28 사용자 요청): Mac 공증 zip·`/Applications` 교체, Windows EV 서명 exe, 개인정보 검사, `public` 푸시, 릴리스 v1.3.1 — 10%
+- [ ] (선택) 원어민 검토
+- [x] Mac 메뉴 막대 아이콘 16pt + 좌우 4pt 여백 (2026-10-28 사용자 요청: 다른 앱 아이콘처럼 앞뒤 간격 약 22) — 실제 메뉴 막대에서 18×18·간격 17/19 → 16×16·간격 21/23
+
 ### 공개 (2026-10-15)
 - 저장소: https://github.com/da-itda/wireless-adb-reconnect (공개, MIT) · 릴리스 v1.0.0 (Mac Universal 공증 zip, Windows exe, SHA256SUMS)
 - **공개 히스토리는 로컬 `main`과 별개**: 로컬 `public` 브랜치 = `origin/main`. 로컬 `main`(개인 정보가 남은 개발 기록)은 푸시하지 않는다.
@@ -120,6 +130,7 @@ Windows scrcpy 설치 방법: GitHub 릴리스 zip(`scrcpy-win64-v5.0.1.zip` 약
 - v1.1.1 (2026-10-15): Windows EV 코드 서명(게시자 LaonCross Inc., 타임스탬프) — `tools/windows_pc.sh build && tools/windows_pc.sh sign` (PC에서 토큰 PIN). Mac 재공증
 - v1.2.0 (2026-10-22): 화면 미러링(scrcpy) + 새 아이콘(회색=연결됨, 빨강=끊김). Mac 공증 프로필 `NOTARY_PROFILE=clipboard-itda-notary` (같은 개발자 계정), 산출물 `dist/release-1.2.0/`
 - v1.3.0 (2026-10-23): 메뉴 개편 + 앱 안 업데이트(주 1회 확인), Mac 아이콘 몸체 검정/흰색, 터미널 폴백 반복 수정. 산출물 `dist/release-1.3.0/`. 1.2.0 이하는 업데이트 기능이 없어 한 번은 직접 설치
+- v1.3.1 (2026-10-28): 일본어·중국어(간체·번체), Mac 메뉴 막대 아이콘 크기·여백, 권한 메뉴 판단 플래그, 안내 속 옛 메뉴 이름. 산출물 `dist/release-1.3.1/`. 1.3.0은 메뉴의 업데이트로 받음
 - 공개 전 개인정보 검사 → 통과할 때만 푸시
 - 다음 후보: Mac 기본 알림 원인 분리, 홍보 글
 

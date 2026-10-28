@@ -45,7 +45,7 @@ The usual fix is `adb kill-server`, start it again, look up the new IP:port, `ad
   - macOS 13+: Swift / SwiftUI, signed & notarized
   - Windows 10/11: single signed `.exe` (~0.7 MB) on built-in .NET Framework 4.8, **x64 and ARM64**
 
-> The UI follows your OS language: **Korean** on Korean systems, **English** everywhere else.
+> The UI follows your OS language: **English, Korean, Japanese, Simplified Chinese, Traditional Chinese**. Any other language shows English.
 
 ## Screenshots
 

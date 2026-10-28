@@ -1,0 +1,519 @@
+/* 简体中文 — 앱 문구. 키는 코드의 영어 문구 (L("한국어", "English")). 점검: python3 tools/i18n.py check */
+
+/* ko: 낮음 (4M · 느린 Wi‑Fi) */
+"Low (4M · slow Wi‑Fi)" = "低 (4M · 慢速 Wi‑Fi)";
+/* ko: 보통 (8M) */
+"Normal (8M)" = "标准 (8M)";
+/* ko: 높음 (16M) */
+"High (16M)" = "高 (16M)";
+/* ko: Homebrew가 없어요. */
+"Homebrew is not installed." = "未安装 Homebrew。";
+/* ko: scrcpy 설치 시작 (brew) */
+"Installing scrcpy (brew)" = "开始安装 scrcpy (brew)";
+/* ko: scrcpy 설치 완료 */
+"scrcpy installed" = "scrcpy 安装完成";
+/* ko: scrcpy 설치 실패:  */
+"scrcpy install failed: " = "scrcpy 安装失败: ";
+/* ko: 설치하지 못했어요 (코드  */
+"Couldn't install (code " = "无法安装 (代码 ";
+/* ko: scrcpy가 설치되어 있지 않아요. 설정 창에서 '화면 미러링도 설치'를 켜 주세요. */
+"scrcpy is not installed. Turn on 'Also install screen mirroring' in Settings." = "未安装 scrcpy。请在设置中打开“同时安装屏幕镜像”。";
+/* ko: 이미 미러링 중이에요. */
+"Already mirroring." = "已在镜像中。";
+/* ko:   미러링 종료, 코드  */
+"  Mirroring ended, code " = "  镜像结束，代码 ";
+/* ko:  (사용자 중지) */
+" (stopped by user)" = " (用户停止)";
+/* ko:   scrcpy 실행 실패:  */
+"  Failed to start scrcpy: " = "  scrcpy 启动失败: ";
+/* ko: scrcpy를 실행하지 못했어요:  */
+"Couldn't start scrcpy: " = "无法启动 scrcpy: ";
+/* ko: ▶ 미러링 시작 pid  */
+"▶ Mirroring started pid " = "▶ 镜像开始 pid ";
+/* ko: 로그인 항목  */
+"Login item " = "登录项";
+/* ko: 등록 */
+"registered" = "已注册";
+/* ko: 해제 */
+"unregistered" = "已取消";
+/* ko: 로그인 항목 변경 실패:  */
+"Login item change failed: " = "更改登录项失败: ";
+/* ko: 제거 완료: 로그인 항목 해제, 설정 초기화, 휴지통으로 →  */
+"Uninstalled: login item removed, settings reset, moved to Trash → " = "已卸载: 已移除登录项、重置设置、移到废纸篓 → ";
+/* ko: 응용 프로그램 폴더로 복사:  */
+"Copied to Applications: " = "已复制到“应用程序”: ";
+/* ko: 다운로드 실패:  */
+"Download failed: " = "下载失败: ";
+/* ko: adb 설치 완료:  */
+"adb installed: " = "adb 安装完成: ";
+/* ko: adb 설치 실패:  */
+"adb install failed: " = "adb 安装失败: ";
+/* ko: 압축 풀기 실패:  */
+"Unzip failed: " = "解压失败: ";
+/* ko: adb 서버 준비 중… */
+"Preparing adb server…" = "正在准备 adb 服务器…";
+/* ko: adb를 찾을 수 없어요. 설정에서 adb를 설치해 주세요. */
+"adb not found. Install it from Settings." = "找不到 adb。请在设置中安装 adb。";
+/* ko: 휴대폰을 기다리는 중… QR을 찍으면 자동으로 연결돼요 */
+"Waiting for your phone… it connects as soon as you scan the QR" = "正在等待手机… 扫描二维码后会自动连接";
+/* ko: 이미 페어링되어 있어서 연결됐어요 */
+"Already paired — connected" = "已配对，已连接";
+/* ko: 페어링 주소 접속 안 됨 → 새 주소 기다림:  */
+"Pairing address unreachable → waiting for a new one: " = "无法连接配对地址 → 等待新地址: ";
+/* ko: 휴대폰 주소를 다시 찾는 중… (Wi‑Fi가 바뀌었을 수 있어요) */
+"Looking for the phone again… (its Wi‑Fi may have changed)" = "正在重新查找手机… (Wi‑Fi 可能已更改)";
+/* ko: 페어링 실패 — 다시 시도하는 중이에요. 휴대폰의 QR 화면을 닫지 마세요 */
+"Pairing failed — retrying. Keep the QR screen open on your phone" = "配对失败，正在重试。请不要关闭手机上的二维码界面";
+/* ko: 시간이 지났어요. 창을 닫고 다시 열어 주세요. */
+"Timed out. Close this window and open it again." = "已超时。请关闭此窗口后重新打开。";
+/* ko: IP 주소:포트와 코드를 입력해 주세요. */
+"Enter the IP address:port and the code." = "请输入 IP 地址:端口和配对码。";
+/* ko: 페어링 중…  */
+"Pairing… " = "正在配对… ";
+/* ko: 페어링  */
+"Pairing " = "配对 ";
+/* ko: 페어링 실패:  */
+"Pairing failed: " = "配对失败: ";
+/* ko: 페어링 완료! 연결하는 중… */
+"Paired! Connecting…" = "配对成功！正在连接…";
+/* ko: 연결됐어요 */
+"Connected" = "已连接";
+/* ko: 페어링은 됐지만 아직 연결되지 않았어요. 메뉴 막대에서 '기기 다시 연결하기'를 눌러 주세요. */
+"Paired, but not connected yet. Choose 'Reconnect device' in the menu bar." = "已配对，但尚未连接。请在菜单栏中选择“重新连接设备”。";
+/* ko: 터미널에서 Android Studio를 설치하고 있어요. 끝나면 Android Studio를 한 번 실행해 설정을 마친 뒤 '다시 확인'을 눌러 주세요. */
+"Installing Android Studio in Terminal. When done, open Android Studio once to finish setup, then press 'Check again'." = "正在“终端”中安装 Android Studio。完成后请运行一次 Android Studio 完成设置，然后点按“重新检查”。";
+/* ko: 다운로드 페이지를 열었어요. 설치하고 Android Studio를 한 번 실행한 뒤 '다시 확인'을 눌러 주세요. */
+"Opened the download page. Install it, open Android Studio once, then press 'Check again'." = "已打开下载页面。安装后运行一次 Android Studio，然后点按“重新检查”。";
+/* ko: adb를 받는 중이에요… */
+"Downloading adb…" = "正在下载 adb…";
+/* ko: 설치하지 못했어요:  */
+"Couldn't install: " = "无法安装: ";
+/* ko: 아직 adb를 찾지 못했어요. */
+"adb still not found." = "仍未找到 adb。";
+/* ko: scrcpy를 설치하는 중이에요… (Homebrew, 1~5분) */
+"Installing scrcpy… (Homebrew, 1–5 min)" = "正在安装 scrcpy… (Homebrew，1–5 分钟)";
+/* ko: scrcpy를 설치하지 못했어요 (앱은 계속 설치할 수 있어요):  */
+"Couldn't install scrcpy (you can still continue): " = "无法安装 scrcpy (仍可继续安装本应用): ";
+/* ko: 옮기지 못했어요:  */
+"Couldn't move the app: " = "无法移动应用: ";
+/* ko: adb 준비 */
+"Get adb" = "准备 adb";
+/* ko: 앱 설치 */
+"Install" = "安装应用";
+/* ko: 휴대폰 페어링 */
+"Pair phone" = "配对手机";
+/* ko: 완료 */
+"Done" = "完成";
+/* ko: 무선 ADB 자동 재연결 */
+"Auto-reconnect" = "无线 ADB 自动重连";
+/* ko: 이미 있는 단계는 건너뜁니다 */
+"Steps already done are skipped" = "已完成的步骤会被跳过";
+/* ko: 건너뜀 */
+"Skipped" = "已跳过";
+/* ko: 1 / 3단계 */
+"Step 1 of 3" = "第 1 步，共 3 步";
+/* ko: adb를 준비할게요 */
+"Let's get adb" = "先来准备 adb";
+/* ko: 이 Mac에서 adb를 찾지 못했어요. 앱에 필요한 건 adb뿐이라 가벼운 설치를 추천해요. */
+"adb wasn't found on this Mac. The app only needs adb, so the lightweight install is recommended." = "在这台 Mac 上找不到 adb。本应用只需要 adb，因此推荐轻量安装。";
+/* ko: adb만 설치 */
+"Install adb only" = "仅安装 adb";
+/* ko: Google 공식 platform-tools · 약 15MB · 1분 이내 */
+"Google's official platform-tools · ~15 MB · under a minute" = "Google 官方 platform-tools · 约 15 MB · 1 分钟内";
+/* ko: 추천 */
+"Recommended" = "推荐";
+/* ko: Android Studio 설치 */
+"Install Android Studio" = "安装 Android Studio";
+/* ko: 앱 개발도 한다면 · 1GB 이상 · 설치 후 한 번 실행해야 adb가 생겨요 */
+"If you also build apps · 1 GB+ · open it once after install to get adb" = "如果也要开发应用 · 1 GB 以上 · 安装后运行一次才会有 adb";
+/* ko: 이미 설치했어요 · 다시 확인 */
+"Already installed · Check again" = "已安装 · 重新检查";
+/* ko: 설치하고 계속 */
+"Install & continue" = "安装并继续";
+/* ko: 2 / 3단계 */
+"Step 2 of 3" = "第 2 步，共 3 步";
+/* ko: 설치되어 있어요 */
+"Installed" = "已安装";
+/* ko: 앱을 설치할게요 */
+"Install the app" = "安装应用";
+/* ko: 자동 실행을 바꾸거나, 화면 미러링(scrcpy)을 추가로 설치할 수 있어요. */
+"Change launch at login, or add screen mirroring (scrcpy)." = "可以更改登录时自动启动，或另外安装屏幕镜像 (scrcpy)。";
+/* ko: 설치하면 메뉴 막대에 머물면서 무선 연결이 끊기면 바로 다시 붙여요. */
+"It stays in the menu bar and reconnects as soon as wireless debugging drops." = "安装后常驻菜单栏，无线调试断开时会立即重新连接。";
+/* ko: 설치 위치 */
+"Location" = "安装位置";
+/* ko: 응용 프로그램 폴더 · 이미 설치됨 */
+"Applications folder · already installed" = "“应用程序”文件夹 · 已安装";
+/* ko: 응용 프로그램 폴더 (지금:  */
+"Applications folder (now in: " = "“应用程序”文件夹 (当前: ";
+/* ko: 로그인할 때 자동 실행 */
+"Launch at login" = "登录时自动启动";
+/* ko: Mac을 켜면 알아서 휴대폰을 붙여요 */
+"Connects your phone automatically when you log in" = "登录 Mac 后自动连接手机";
+/* ko: 화면 미러링(scrcpy)도 설치 */
+"Also install screen mirroring (scrcpy)" = "同时安装屏幕镜像 (scrcpy)";
+/* ko: 이미 설치됨 · 메뉴 '화면 미러링 시작하기'(⌘M) */
+"Already installed · menu 'Start screen mirroring' (⌘M)" = "已安装 · 菜单中的“开始屏幕镜像”(⌘M)";
+/* ko: 휴대폰 화면을 Mac에 띄우고 조작 · Homebrew로 설치 · 1~5분 */
+"See and control your phone on the Mac · via Homebrew · 1–5 min" = "在 Mac 上显示并操作手机屏幕 · 通过 Homebrew 安装 · 1–5 分钟";
+/* ko: Homebrew(brew.sh)가 필요해요 · 설치 후 설정에서 켤 수 있어요 */
+"Needs Homebrew (brew.sh) · turn on later in Settings" = "需要 Homebrew (brew.sh) · 安装后可在设置中打开";
+/* ko: 이전 */
+"Back" = "上一步";
+/* ko: 계속 */
+"Continue" = "继续";
+/* ko: 휴대폰과 이 Mac을 **같은 Wi‑Fi**에 연결 */
+"Connect your phone and this Mac to the **same Wi‑Fi**" = "将手机和这台 Mac 连接到**同一个 Wi‑Fi**";
+/* ko: 휴대폰에서 무선 디버깅 열기 */
+"On the phone, open Wireless debugging" = "在手机上打开无线调试";
+/* ko: 설정 › 개발자 옵션 › 무선 디버깅 */
+"Settings › Developer options › Wireless debugging" = "设置 › 开发者选项 › 无线调试";
+/* ko: **QR 코드로 기기 페어링**을 눌러 왼쪽 QR 찍기 */
+"Tap **Pair device with QR code** and scan this QR" = "点按**使用二维码配对设备**，扫描左侧二维码";
+/* ko: IP 주소:포트 */
+"IP address:port" = "IP 地址:端口";
+/* ko: 6자리 코드 */
+"6-digit code" = "6 位配对码";
+/* ko: 페어링 */
+"Pair" = "配对";
+/* ko: 3 / 3단계 · 처음 한 번만 */
+"Step 3 of 3 · first time only" = "第 3 步，共 3 步 · 仅首次";
+/* ko: 휴대폰으로 QR을 찍어 주세요 */
+"Scan the QR with your phone" = "请用手机扫描二维码";
+/* ko: QR로 하기 */
+"Use QR code" = "使用二维码";
+/* ko: QR 대신 페어링 코드로 하기 */
+"Use a pairing code instead" = "改用配对码";
+/* ko: 이미 페어링했어요 · 건너뛰기 */
+"Already paired · Skip" = "已配对 · 跳过";
+/* ko: 준비됐어요 */
+"All set" = "一切就绪";
+/* ko: 이제 무선 연결이 끊기면 원인을 찾아 다시 붙여요. */
+"From now on, when wireless debugging drops it finds the cause and reconnects." = "今后无线调试断开时，会查找原因并重新连接。";
+/* ko: 휴대폰에서 무선 디버깅을 켜면 알아서 연결해요. */
+"Turn on Wireless debugging on your phone and it connects automatically." = "在手机上打开无线调试后会自动连接。";
+/* ko: 휴대폰 */
+"Phone" = "手机";
+/* ko: 무선 */
+"Wireless" = "无线";
+/* ko: 아직 연결 안 됨 */
+"Not connected yet" = "尚未连接";
+/* ko: 끊김 */
+"Disconnected" = "已断开";
+/* ko: 끊기면 메뉴 막대의 아이콘을 누르거나, 앱을 다시 열기만 하면 돼요. 아이콘의 전파가 회색이면 연결, 빨강이면 끊김이에요. */
+"If it drops, click the menu bar icon or just open the app again. Gray waves = connected, red = disconnected." = "断开时，点按菜单栏图标或重新打开应用即可。图标的信号波为灰色表示已连接，红色表示已断开。";
+/* ko:  메뉴의 '화면 미러링 시작하기'(⌘M)으로 휴대폰 화면을 띄울 수 있어요. */
+" 'Start screen mirroring' (⌘M) in the menu shows your phone's screen." = "使用菜单中的“开始屏幕镜像”(⌘M) 可显示手机屏幕。";
+/* ko: 휴대폰 페어링 · 이 Mac에서 처음 한 번 */
+"Pair phone · once per Mac" = "配对手机 · 每台 Mac 仅需一次";
+/* ko: 닫기 */
+"Close" = "关闭";
+/* ko:  설정 */
+" Settings" = " 设置";
+/* ko: 휴대폰 페어링 —  */
+"Pair phone — " = "配对手机 — ";
+/* ko: 업데이트 확인 실패:  */
+"Update check failed: " = "检查更新失败: ";
+/* ko: 업데이트 확인: 지금  */
+"Update check: current " = "检查更新: 当前 ";
+/* ko: , 최신  */
+", latest " = "，最新 ";
+/* ko: 업데이트 실패:  */
+"Update failed: " = "更新失败: ";
+/* ko: 업데이트하지 못했어요 */
+"Couldn't update" = "无法更新";
+/* ko: 업데이트 받는 중:  */
+"Downloading update: " = "正在下载更新: ";
+/* ko: 받은 파일의 체크섬이 맞지 않아요 */
+"Checksum of the download doesn't match" = "下载文件的校验和不匹配";
+/* ko: 압축을 풀지 못했어요 */
+"Couldn't unzip the update" = "无法解压更新";
+/* ko: 서명이 이 앱과 같은 개발자가 아니에요 */
+"The update isn't signed by the same developer" = "更新的签名与本应用的开发者不同";
+/* ko: Apple 공증을 확인하지 못했어요 */
+"Couldn't verify Apple notarization" = "无法验证 Apple 公证";
+/* ko: 앱을 바꿀 수 없어요 (폴더 권한):  */
+"Can't replace the app (folder permission): " = "无法替换应用 (文件夹权限): ";
+/* ko: 새 앱을 넣지 못해 원래대로 되돌렸어요 */
+"Couldn't place the new app; restored the old one" = "无法放入新版应用，已恢复原版";
+/* ko: 업데이트 설치:  */
+"Update installed: " = "已安装更新: ";
+/* ko: 다시 시도 */
+"Try again" = "重试";
+/* ko: 진단 보기 */
+"Diagnostics" = "查看诊断";
+/* ko: 알림 권한:  */
+"Notification permission: " = "通知权限: ";
+/* ko: 허용 */
+"allowed" = "已允许";
+/* ko: 없음 */
+"denied" = "无";
+/* ko:   mDNS 탐색 상태:  */
+"  mDNS browse state: " = "  mDNS 浏览状态: ";
+/* ko:   mDNS: 휴대폰 발견  */
+"  mDNS: found phone " = "  mDNS: 发现手机 ";
+/* ko:   휴대폰 접속 테스트 실패:  */
+"  Phone reachability test failed: " = "  手机连接测试失败: ";
+/* ko:   로컬 네트워크 권한 요청 대기 중… */
+"  Waiting for Local Network permission…" = "  正在等待本地网络权限…";
+/* ko:   휴대폰 접속 테스트 시간 초과 */
+"  Phone reachability test timed out" = "  手机连接测试超时";
+/* ko: offline 기기 재연결 */
+"Reconnect offline device" = "重新连接 offline 设备";
+/* ko: 서버 유지 + IP:포트 직접 연결 */
+"Keep server, connect to IP:port" = "保留服务器，直接连接 IP:端口";
+/* ko: 앱이 adb 서버 재시작 */
+"Restart adb server (owned by app)" = "由应用重启 adb 服务器";
+/* ko: 앱이 adb 서버 재시작 (macOS mDNS 백엔드) */
+"Restart adb server (macOS mDNS backend)" = "由应用重启 adb 服务器 (macOS mDNS 后端)";
+/* ko: 터미널에서 서버 실행 */
+"Start server from Terminal" = "从“终端”启动服务器";
+/* ko: adb 버전 불일치 → 다른 adb(Android Studio 등)가 서버를 띄움 */
+"adb version mismatch → another adb (Android Studio, etc.) started the server" = "adb 版本不一致 → 其他 adb (Android Studio 等) 启动了服务器";
+/* ko: launchd(데몬, 띄운 프로그램 불명) */
+"launchd (daemon, parent unknown)" = "launchd (守护进程，启动来源不明)";
+/* ko:   원인 후보:  */
+"  Possible cause: " = "  可能原因: ";
+/* ko: ===== 다시 붙이기 시작 */
+"===== Reconnect started" = "===== 开始重新连接";
+/* ko: 진단: 기기 =  */
+"Diagnosis: devices = " = "诊断: 设备 = ";
+/* ko: 이미 연결되어 있어요:  */
+"Already connected: " = "已连接: ";
+/* ko: 진단: adb 서버 소유 =  */
+"Diagnosis: adb server owner = " = "诊断: adb 服务器所有者 = ";
+/* ko: 이 앱 */
+"this app" = "本应用";
+/* ko: adb 서버를 다른 프로그램({0})이 띄움 → 그 프로그램에 로컬 네트워크 권한이 없으면 휴대폰에 못 붙음 */
+"Another program ({0}) started the adb server → it can't reach the phone without Local Network permission" = "其他程序 ({0}) 启动了 adb 服务器 → 该程序没有本地网络权限就无法连接手机";
+/* ko: 진단: adb 서버 꺼져 있음 */
+"Diagnosis: adb server not running" = "诊断: adb 服务器未运行";
+/* ko: 기기가 offline 상태로 남아 있음 */
+"Device is stuck offline" = "设备一直处于 offline 状态";
+/* ko: 휴대폰에서 디버깅 허용 필요 (unauthorized) */
+"Allow debugging on the phone (unauthorized)" = "需要在手机上允许调试 (unauthorized)";
+/* ko: 진단: 휴대폰 =  */
+"Diagnosis: phone = " = "诊断: 手机 = ";
+/* ko: 휴대폰은 보이지만 이 앱에서 접속 불가 → 로컬 네트워크 권한 또는 네트워크(VPN 등) 문제 */
+"Phone is visible but unreachable from this app → Local Network permission or network (VPN, etc.)" = "能看到手机，但本应用无法连接 → 本地网络权限或网络 (VPN 等) 问题";
+/* ko: 이 앱에 로컬 네트워크 권한 없음 → 시스템 설정 > 개인정보 보호 및 보안 > 로컬 네트워크에서 허용 */
+"This app has no Local Network permission → allow it in System Settings > Privacy & Security > Local Network" = "本应用没有本地网络权限 → 请在“系统设置 > 隐私与安全性 > 本地网络”中允许";
+/* ko: 휴대폰이 보이지 않음 → 무선 디버깅 꺼짐 / 화면 꺼짐·절전 / 다른 Wi‑Fi */
+"Phone not visible → wireless debugging off / screen off or power saving / different Wi‑Fi" = "看不到手机 → 无线调试已关闭 / 屏幕关闭或省电 / 不同的 Wi‑Fi";
+/* ko: 시도 순서:  */
+"Order: " = "尝试顺序: ";
+/* ko: ▶ 시도:  */
+"▶ Trying: " = "▶ 尝试: ";
+/* ko: 다시 붙었어요 —  */
+"Reconnected — " = "已重新连接 — ";
+/* ko:   실패:  */
+"  Failed: " = "  失败: ";
+/* ko: 원인을 찾지 못했어요 — 진단 보기를 확인해 주세요 */
+"Unknown cause — check Diagnostics" = "未找到原因，请查看诊断";
+/* ko: 원인 후보 전체: */
+"All possible causes:" = "全部可能原因:";
+/* ko: 결과:  */
+"Result: " = "结果: ";
+/* ko: No route to host → adb 서버를 띄운 프로그램에 로컬 네트워크 권한 없음 (또는 다른 네트워크) */
+"No route to host → the program running the adb server has no Local Network permission (or different network)" = "No route to host → 启动 adb 服务器的程序没有本地网络权限 (或不在同一网络)";
+/* ko: Connection refused → 무선 디버깅 포트가 바뀌었거나 꺼짐 */
+"Connection refused → wireless debugging port changed or turned off" = "Connection refused → 无线调试端口已变更或已关闭";
+/* ko: 인증 실패 → 이 Mac과 페어링이 안 됨. 메뉴의 '휴대폰 페어링'으로 다시 페어링하세요 */
+"Authentication failed → this Mac isn't paired. Use 'Pair phone' in the menu" = "认证失败 → 这台 Mac 尚未配对。请使用菜单中的“配对手机”重新配对";
+/* ko: 시간 초과 → 휴대폰 절전 / 다른 Wi‑Fi / VPN 경로 */
+"Timed out → phone asleep / different Wi‑Fi / VPN route" = "超时 → 手机休眠 / 不同的 Wi‑Fi / VPN 路由";
+/* ko:   서버가 안 꺼져서 강제 종료:  */
+"  Server did not stop, killing: " = "  服务器未停止，强制结束: ";
+/* ko:   (앱의 adb 서버 종료, 코드  */
+"  (app's adb server exited, code " = "  (应用的 adb 服务器已退出，代码 ";
+/* ko:   서버 실행 실패:  */
+"  Failed to start server: " = "  服务器启动失败: ";
+/* ko:   앱 소유 서버 시작 pid  */
+"  Started app-owned server pid " = "  已启动应用所有的服务器 pid ";
+/* ko: 포트 안 열림 */
+"port not open" = "端口未打开";
+/* ko:   터미널 서버 소유:  */
+"  Terminal server owner: " = "  “终端”服务器所有者: ";
+/* ko: 확인 중… */
+"Checking…" = "正在检查…";
+/* ko: 로컬 네트워크 권한 열기 */
+"Open Local Network settings" = "打开本地网络权限";
+/* ko: 화면 미러링 시작하기 */
+"Start screen mirroring" = "开始屏幕镜像";
+/* ko: 휴대폰 페어링… */
+"Pair phone…" = "配对手机…";
+/* ko: 미러링 옵션 */
+"Mirroring options" = "镜像选项";
+/* ko: 설정… */
+"Settings…" = "设置…";
+/* ko: 종료 (adb 서버도 종료) */
+"Quit (stops adb server)" = "退出 (同时停止 adb 服务器)";
+/* ko: 소리도 전송 */
+"Forward audio" = "同时传输声音";
+/* ko: 창을 항상 위에 */
+"Window always on top" = "窗口始终置顶";
+/* ko: 미러링 중 폰 화면 끄기 */
+"Turn phone screen off" = "镜像时关闭手机屏幕";
+/* ko: 동영상으로 녹화 (Movies 폴더) */
+"Record to Movies folder" = "录制为视频 (“影片”文件夹)";
+/* ko: 미러링 로그 보기 */
+"Mirroring log" = "查看镜像日志";
+/* ko: 옵션은 다음 미러링부터 적용돼요 */
+"Options apply to the next mirroring session" = "选项将从下次镜像开始生效";
+/* ko: scrcpy가 필요해요 */
+"scrcpy is required" = "需要 scrcpy";
+/* ko: 설정 창에서 '화면 미러링(scrcpy)도 설치'를 켜 주세요. */
+"Turn on 'Also install screen mirroring (scrcpy)' in Settings." = "请在设置中打开“同时安装屏幕镜像 (scrcpy)”。";
+/* ko: 미러링 준비 중… */
+"Preparing mirroring…" = "正在准备镜像…";
+/* ko: 미러링 전 다시 붙이기 */
+"Reconnecting before mirroring" = "镜像前重新连接";
+/* ko: 연결하지 못했어요 */
+"Couldn't reconnect" = "无法连接";
+/* ko: 미러링을 시작하지 못했어요 */
+"Couldn't start mirroring" = "无法开始镜像";
+/* ko: 미러링이 끊겼어요 */
+"Mirroring stopped" = "镜像已中断";
+/* ko: 무선 연결이 끊겼을 수 있어요. ⌘M으로 다시 붙이고 미러링해요. */
+"Wireless debugging may have dropped. Press ⌘M to reconnect and mirror again." = "无线调试可能已断开。按 ⌘M 重新连接并镜像。";
+/* ko: 화면 미러링 중지 */
+"Stop screen mirroring" = "停止屏幕镜像";
+/* ko: 연결하는 중… */
+"Connecting…" = "正在连接…";
+/* ko: 다시 연결됐어요 */
+"Reconnected" = "已重新连接";
+/* ko: {0}초 걸렸어요 */
+"took {0}s" = "用时 {0} 秒";
+/* ko: 연결됨 ·  */
+"Connected · " = "已连接 · ";
+/* ko:  · 미러링 중 */
+" · Mirroring" = " · 镜像中";
+/* ko: 기기 다시 연결하기 */
+"Reconnect device" = "重新连接设备";
+/* ko: 업데이트 확인 ({0}) */
+"Check for updates ({0})" = "检查更新 ({0})";
+/* ko: 최신 버전 ({0}) */
+"Up to date ({0})" = "已是最新版本 ({0})";
+/* ko: 업데이트 ({0} → {1}) */
+"Update ({0} → {1})" = "更新 ({0} → {1})";
+/* ko: 업데이트 확인 중… */
+"Checking for updates…" = "正在检查更新…";
+/* ko: 업데이트하는 중… ({0}) */
+"Updating… ({0})" = "正在更新… ({0})";
+/* ko: 설치 완료:  */
+"Installed: " = "安装完成: ";
+/* ko: {0}를 제거할까요?
+(설치한 adb와 기록은 남겨 둡니다) */
+"Uninstall {0}?\n(adb and logs are kept)" = "要卸载 {0} 吗？\n(已安装的 adb 和日志会保留)";
+/* ko: 제거 완료 */
+"Uninstalled" = "已卸载";
+/* ko: 제거했습니다. */
+"Uninstalled." = "已卸载。";
+/* ko: 옛 ADB Revive 정리 */
+"Removed old ADB Revive" = "已清除旧版 ADB Revive";
+/* ko: AppInfo.Korean + " — 무선 디버깅이 끊기면 다시 붙여 줍니다" */
+"Auto-reconnect wireless debugging (ADB over Wi-Fi)" = "无线调试断开时自动重新连接 (ADB over Wi-Fi)";
+/* ko: 설치가 끝나면 Android Studio를 한 번 실행해 설정 마법사를 마치세요 (그때 adb가 설치됩니다). */
+"When done, open Android Studio once and finish the setup wizard (that installs adb)." = "完成后请运行一次 Android Studio 并完成设置向导 (届时会安装 adb)。";
+/* ko: scrcpy 받는 중:  */
+"Downloading scrcpy: " = "正在下载 scrcpy: ";
+/* ko: zip 안에 scrcpy.exe가 없어요 */
+"scrcpy.exe not found in the zip" = "zip 中没有 scrcpy.exe";
+/* ko: scrcpy 설치 완료:  */
+"scrcpy installed: " = "scrcpy 安装完成: ";
+/* ko: QR 생성 실패:  */
+"QR generation failed: " = "二维码生成失败: ";
+/* ko: adb를 찾을 수 없어요. */
+"adb not found." = "找不到 adb。";
+/* ko: 페어링은 됐지만 아직 연결되지 않았어요. 트레이 메뉴의 '기기 다시 연결하기'를 눌러 주세요. */
+"Paired, but not connected yet. Choose 'Reconnect device' in the tray menu." = "已配对，但尚未连接。请在托盘菜单中选择“重新连接设备”。";
+/* ko: 앱이 adb 서버 재시작 (openscreen mDNS) */
+"Restart adb server (openscreen mDNS)" = "由应用重启 adb 服务器 (openscreen mDNS)";
+/* ko: adb 버전 불일치 → 다른 adb(Android Studio·scrcpy 등)가 서버를 띄움 */
+"adb version mismatch → another adb (Android Studio, scrcpy, etc.) started the server" = "adb 版本不一致 → 其他 adb (Android Studio、scrcpy 等) 启动了服务器";
+/* ko: 진단: adb =  */
+"Diagnosis: adb = " = "诊断: adb = ";
+/* ko: 진단: adb 서버 =  */
+"Diagnosis: adb server = " = "诊断: adb 服务器 = ";
+/* ko: 다른 adb({0})가 서버를 띄움 → 버전이 다르면 서로 서버를 죽여 연결이 끊김 (Android Studio·scrcpy 등) */
+"Another adb ({0}) started the server → different versions kill each other's server (Android Studio, scrcpy, etc.)" = "其他 adb ({0}) 启动了服务器 → 版本不同会互相结束对方的服务器而断开连接 (Android Studio、scrcpy 等)";
+/* ko: 원인을 찾지 못했어요 */
+"Unknown cause" = "未找到原因";
+/* ko:  (눌러서 진단 보기) */
+" (click for diagnostics)" = " (点击查看诊断)";
+/* ko: 진단: 네트워크 프로필 =  */
+"Diagnosis: network profile = " = "诊断: 网络配置文件 = ";
+/* ko: 네트워크가 '공용'으로 설정됨 → mDNS가 막혀 휴대폰을 못 찾음. 설정 > 네트워크 > 속성에서 '개인'으로 바꾸세요 */
+"Network is set to Public → mDNS is blocked. Change it to Private in Settings > Network > Properties" = "网络设置为“公用” → mDNS 被阻止，找不到手机。请在“设置 > 网络 > 属性”中改为“专用”";
+/* ko: 휴대폰이 보이지 않음 → 휴대폰 무선 디버깅 꺼짐 / 화면 꺼짐·절전 / 다른 Wi‑Fi, 또는 방화벽이 mDNS(UDP 5353)를 막음 */
+"Phone not visible → wireless debugging off / screen off or power saving / different Wi‑Fi, or a firewall blocks mDNS (UDP 5353)" = "看不到手机 → 无线调试已关闭 / 屏幕关闭或省电 / 不同的 Wi‑Fi，或防火墙阻止了 mDNS (UDP 5353)";
+/* ko: 휴대폰({0})은 보이지만 접속 안 됨 → 방화벽·VPN·다른 네트워크 확인 */
+"Phone ({0}) is visible but unreachable → check firewall, VPN, network" = "能看到手机 ({0})，但无法连接 → 请检查防火墙、VPN、网络";
+/* ko: 휴대폰({0})은 보이고 네트워크도 정상이지만 adb 연결이 거부됨 → 이 PC와 페어링이 안 됨. 트레이 메뉴 '휴대폰 페어링'으로 페어링하세요 */
+"Phone ({0}) is reachable but adb refused → this PC isn't paired. Use 'Pair phone' in the tray menu" = "可以连接手机 ({0})，但 adb 被拒绝 → 这台电脑尚未配对。请使用托盘菜单中的“配对手机”进行配对";
+/* ko:   mDNS 휴대폰 =  */
+"  mDNS phone = " = "  mDNS 手机 = ";
+/* ko: 없음 */
+"none" = "无";
+/* ko: 인증 실패 → 이 PC와 페어링이 안 됨. 트레이 메뉴 '휴대폰 페어링'으로 다시 페어링 */
+"Authentication failed → this PC isn't paired. Use 'Pair phone' in the tray menu" = "认证失败 → 这台电脑尚未配对。请使用托盘菜单中的“配对手机”重新配对";
+/* ko: 경로 없음 → 휴대폰과 PC가 다른 네트워크 */
+"No route → phone and PC are on different networks" = "无路由 → 手机和电脑不在同一网络";
+/* ko:   (앱의 adb 서버 종료) */
+"  (app's adb server exited)" = "  (应用的 adb 服务器已退出)";
+/* ko: 내 프로그램 폴더 · 이미 설치됨 */
+"Programs folder · already installed" = "程序文件夹 · 已安装";
+/* ko: 내 프로그램 폴더 (AppData\Local\Programs) */
+"Programs folder (AppData\\Local\\Programs)" = "程序文件夹 (AppData\\Local\\Programs)";
+/* ko: 이미 설치됨 · 트레이 메뉴 '화면 미러링 시작하기' */
+"Already installed · tray menu 'Start screen mirroring'" = "已安装 · 托盘菜单中的“开始屏幕镜像”";
+/* ko: 이 PC에서 adb를 찾지 못했어요. 앱에 필요한 건 adb뿐이라 가벼운 설치를 추천해요. */
+"adb wasn't found on this PC. The app only needs adb, so the lightweight install is recommended." = "在这台电脑上找不到 adb。本应用只需要 adb，因此推荐轻量安装。";
+/* ko: 자동 실행·바로가기를 바꾸거나, 화면 미러링(scrcpy)을 추가로 설치할 수 있어요. */
+"Change launch at login and the shortcut, or add screen mirroring (scrcpy)." = "可以更改自动启动和快捷方式，或另外安装屏幕镜像 (scrcpy)。";
+/* ko: 설치하면 작업 표시줄 트레이에 머물면서 무선 연결이 끊기면 바로 다시 붙여요. */
+"It stays in the system tray and reconnects as soon as wireless debugging drops." = "安装后常驻任务栏通知区域，无线调试断开时会立即重新连接。";
+/* ko: Android Studio를 설치하고 있어요. 끝나면 Android Studio를 한 번 실행해 설정을 마친 뒤 '다시 확인'을 눌러 주세요. */
+"Installing Android Studio. When done, open it once to finish setup, then press 'Check again'." = "正在安装 Android Studio。完成后请运行一次完成设置，然后按“重新检查”。";
+/* ko: adb를 받는 중이에요…  */
+"Downloading adb… " = "正在下载 adb… ";
+/* ko: scrcpy를 받는 중이에요… */
+"Downloading scrcpy…" = "正在下载 scrcpy…";
+/* ko: scrcpy를 받는 중이에요…  */
+"Downloading scrcpy… " = "正在下载 scrcpy… ";
+/* ko: 설치 실패:  */
+"Install failed: " = "安装失败: ";
+/* ko: 휴대폰 페어링 · 이 PC에서 처음 한 번 */
+"Pair phone · once per PC" = "配对手机 · 每台电脑仅需一次";
+/* ko: 무선 연결이 끊겼을 수 있어요. '화면 미러링 시작하기'를 다시 누르면 먼저 다시 붙이고 미러링해요. */
+"Wireless debugging may have dropped. Choose 'Start screen mirroring' again to reconnect and mirror." = "无线调试可能已断开。再次选择“开始屏幕镜像”会先重新连接再镜像。";
+/* ko: 동영상으로 녹화 (비디오 폴더) */
+"Record to Videos folder" = "录制为视频 (“视频”文件夹)";
+/* ko: 오류:  */
+"Error: " = "错误: ";
+/* ko: 더블클릭 */
+"Double-click" = "双击";
+/* ko:  — 연결됨 */
+" — connected" = " — 已连接";
+/* ko:  — 끊김 (더블클릭: 다시 붙이기) */
+" — disconnected (double-click to reconnect)" = " — 已断开 (双击重新连接)";
+/* ko: 새 버전 실행 실패:  */
+"Failed to start new version: " = "新版本启动失败: ";
+/* ko: 서명이 이 앱의 게시자가 아니에요 */
+"The update isn't signed by this app's publisher" = "更新的签名不是本应用的发布者";
+/* ko: 휴대폰과 이 PC를 **같은 Wi‑Fi**에 연결 */
+"Connect your phone and this PC to the **same Wi‑Fi**" = "将手机和这台电脑连接到**同一个 Wi‑Fi**";
+/* ko: 코드 */
+"Code" = "配对码";
+/* ko: Google 공식 platform-tools · 약 15MB · 1분 이내 */
+"Official Google platform-tools · ~15 MB · under a minute" = "Google 官方 platform-tools · 约 15 MB · 1 分钟内";
+/* ko: PC를 켜면 알아서 휴대폰을 붙여요 */
+"Connects your phone automatically when you sign in" = "登录电脑后自动连接手机";
+/* ko: 바탕화면 바로가기 */
+"Desktop shortcut" = "桌面快捷方式";
+/* ko: 더블클릭하면 바로 다시 붙이기 */
+"Double-click to reconnect" = "双击即可重新连接";
+/* ko: 휴대폰 화면을 PC에 띄우고 조작 · 약 11MB · 오픈소스(Genymobile) */
+"See and control your phone on this PC · ~11 MB · open source (Genymobile)" = "在电脑上显示并操作手机屏幕 · 约 11 MB · 开源 (Genymobile)";
+/* ko: 끊기면 작업 표시줄 트레이의 아이콘을 더블클릭하거나, 바탕화면 바로가기를 다시 열기만 하면 돼요. 아이콘의 전파가 회색이면 연결, 빨강이면 끊김이에요. */
+"If it drops, double-click the tray icon or open the desktop shortcut again. Gray waves = connected, red = disconnected." = "断开时，双击通知区域图标或重新打开桌面快捷方式即可。图标的信号波为灰色表示已连接，红色表示已断开。";

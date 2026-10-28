@@ -15,7 +15,7 @@
                     <Border DockPanel.Dock="Left" Width="22" Height="22" CornerRadius="11" Background="{StaticResource Mint2}" VerticalAlignment="Top" Margin="0,0,10,0">
                         <TextBlock Text="1" FontSize="12" FontWeight="Bold" Foreground="{StaticResource BrandText}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock x:Name="Step1" FontSize="13" TextWrapping="Wrap" LineHeight="20"><Run Text="{local:T Ko='휴대폰과 이 PC를 ', En='Connect your phone and this PC to the '}"/><Bold><Run Text="{local:T Ko='같은 Wi‑Fi', En='same Wi‑Fi'}"/></Bold><Run Text="{local:T Ko='에 연결', En=''}"/></TextBlock>
+                    <TextBlock x:Name="Step1" FontSize="13" TextWrapping="Wrap" LineHeight="20" local:Md.Text="{local:T Ko='휴대폰과 이 PC를 **같은 Wi‑Fi**에 연결', En='Connect your phone and this PC to the **same Wi‑Fi**'}"/>
                 </DockPanel>
                 <DockPanel Margin="0,0,0,14">
                     <Border DockPanel.Dock="Left" Width="22" Height="22" CornerRadius="11" Background="{StaticResource Mint2}" VerticalAlignment="Top" Margin="0,0,10,0">
@@ -32,7 +32,7 @@
                     <Border DockPanel.Dock="Left" Width="22" Height="22" CornerRadius="11" Background="{StaticResource Mint2}" VerticalAlignment="Top" Margin="0,0,10,0">
                         <TextBlock Text="3" FontSize="12" FontWeight="Bold" Foreground="{StaticResource BrandText}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="20"><Run Text="{local:T Ko='', En='Tap '}"/><Bold><Run Text="{local:T Ko='QR 코드로 기기 페어링', En='Pair device with QR code'}"/></Bold><Run Text="{local:T Ko='을 눌러 왼쪽 QR 찍기', En=' and scan this QR'}"/></TextBlock>
+                    <TextBlock FontSize="13" TextWrapping="Wrap" LineHeight="20" local:Md.Text="{local:T Ko='**QR 코드로 기기 페어링**을 눌러 왼쪽 QR 찍기', En='Tap **Pair device with QR code** and scan this QR'}"/>
                 </DockPanel>
             </StackPanel>
         </StackPanel>

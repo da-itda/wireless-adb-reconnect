@@ -32,6 +32,8 @@ namespace WirelessAdbReconnect
         internal SetupWindow(Reviver reviver, bool installedMode, Step? preview = null, Device previewDevice = null, Step? startAt = null)
         {
             InitializeComponent();
+            // 간체 글꼴(Microsoft YaHei UI)은 줄 간격이 넓어 ② 설치 단계 카드가 버튼에 닿는다 → 창을 조금 키움
+            if (Lang.Code == "zh-Hans") Root.Height += 24;
             this.reviver = reviver;
             this.installedMode = installedMode;
             Title = AppInfo.Name + L(" 설정", " Settings");
@@ -54,7 +56,7 @@ namespace WirelessAdbReconnect
             var hasScrcpy = preview == null && Mirror.IsInstalled;
             MirrorToggle.IsChecked = hasScrcpy || !Mirror.Declined;
             MirrorToggle.IsEnabled = !hasScrcpy;
-            if (hasScrcpy) MirrorDetail.Text = L("이미 설치됨 · 트레이 메뉴 '화면 미러링 시작'", "Already installed · tray menu 'Start screen mirroring'");
+            if (hasScrcpy) MirrorDetail.Text = L("이미 설치됨 · 트레이 메뉴 '화면 미러링 시작하기'", "Already installed · tray menu 'Start screen mirroring'");
             ChoiceAdb.Checked += (s, e) => Render();
             ChoiceStudio.Checked += (s, e) => Render();
 
@@ -126,6 +128,7 @@ namespace WirelessAdbReconnect
                     Header3(L("3 / 3단계 · 처음 한 번만", "Step 3 of 3 · first time only"), L("휴대폰으로 QR을 찍어 주세요", "Scan the QR with your phone"), null);
                     LeftBtn.Content = Pair.CodeMode ? L("QR로 하기", "Use QR code") : L("QR 대신 페어링 코드로 하기", "Use a pairing code instead");
                     LeftBtn.Visibility = Visibility.Visible;
+                    if (previewIP != null) break;   // 스냅샷: 페어링(adb 서버)을 시작하지 않음
                     if (IsVisible) Pair.Start(); else Loaded += (s, e) => { if (step == Step.Pair) Pair.Start(); };
                     break;
                 case Step.Done:
@@ -357,7 +360,7 @@ namespace WirelessAdbReconnect
     /// 메뉴에서 여는 페어링 창 (마법사 없이)
     class PairWindow : Window
     {
-        public PairWindow(Reviver reviver)
+        public PairWindow(Reviver reviver, bool autoStart = true)
         {
             Title = L("휴대폰 페어링 — ", "Pair phone — ") + AppInfo.Short;
             Icon = Icons.Window();
@@ -388,7 +391,7 @@ namespace WirelessAdbReconnect
             root.Children.Add(pair);
             root.Children.Add(bottom);
             Content = root;
-            Loaded += (s, e) => pair.Start();
+            if (autoStart) Loaded += (s, e) => pair.Start();
             Closed += (s, e) => pair.Stop();
         }
     }

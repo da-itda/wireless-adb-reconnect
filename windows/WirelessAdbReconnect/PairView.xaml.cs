@@ -134,7 +134,7 @@ namespace WirelessAdbReconnect
                 Set(L("연결됐어요", "Connected"), Kind.Success);
                 Dispatcher.BeginInvoke((Action)(() => Paired?.Invoke()));
             }
-            else Set(L("페어링은 됐지만 아직 연결되지 않았어요. 트레이 메뉴의 '지금 다시 붙이기'를 눌러 주세요.", "Paired, but not connected yet. Choose 'Reconnect now' in the tray menu."), Kind.Error);
+            else Set(L("페어링은 됐지만 아직 연결되지 않았어요. 트레이 메뉴의 '기기 다시 연결하기'를 눌러 주세요.", "Paired, but not connected yet. Choose 'Reconnect device' in the tray menu."), Kind.Error);
             return true;
         }
 

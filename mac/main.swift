@@ -12,12 +12,22 @@ let home = FileManager.default.homeDirectoryForCurrentUser
 let appName = "Wireless ADB Reconnect"
 let appShortName = "ADB Reconnect"
 
-/// 화면 언어: OS의 첫 번째 선호 언어가 한국어면 한국어, 그 밖의 언어는 모두 영어 (WAR_LANG=ko|en 으로 강제 — 스냅샷용)
-let isKorean: Bool = {
-    if let forced = ProcessInfo.processInfo.environment["WAR_LANG"] { return forced == "ko" }
-    return Locale.preferredLanguages.first?.hasPrefix("ko") ?? false
+/// 화면 언어: 한국어·일본어·중국어(간체·번체), 그 밖의 언어는 모두 영어 (WAR_LANG=ko|en|ja|zh-Hans|zh-Hant 로 강제 — 스냅샷용)
+/// 어느 언어를 쓸지는 macOS가 번들의 lproj 중에서 고른다 (권한 안내문 InfoPlist.strings와 같은 규칙)
+let uiLang: String = ProcessInfo.processInfo.environment["WAR_LANG"] ?? Bundle.main.preferredLocalizations.first ?? "en"
+let isKorean = uiLang == "ko"
+/// 일본어·중국어 문구: <lang>.lproj/App.strings (assets/i18n/<lang>.strings, 영어 문구가 키)
+private let translations: [String: String] = {
+    guard !isKorean, uiLang != "en",
+          let path = Bundle.main.path(forResource: "App", ofType: "strings", inDirectory: nil, forLocalization: uiLang) else { return [:] }
+    return NSDictionary(contentsOfFile: path) as? [String: String] ?? [:]
 }()
-func L(_ ko: String, _ en: String) -> String { isKorean ? ko : en }
+/// 한국어는 ko, 일본어·중국어는 영어 문구로 번역을 찾고(없으면 영어), 그 밖은 en. {0} {1} … 자리에 args를 넣는다
+func L(_ ko: String, _ en: String, _ args: Any...) -> String {
+    var s = isKorean ? ko : translations[en] ?? en
+    for (i, a) in args.enumerated() { s = s.replacingOccurrences(of: "{\(i)}", with: "\(a)") }
+    return s
+}
 let logURL = home.appendingPathComponent("Library/Logs/wireless-adb-reconnect.log")
 let serverLogURL = home.appendingPathComponent("Library/Logs/wireless-adb-reconnect-server.log")
 let supportDir = home.appendingPathComponent("Library/Application Support/\(appName)")
@@ -279,6 +289,7 @@ final class Reviver {
     private(set) var adb: String?
     private(set) var server: Process?       // 앱이 소유한 nodaemon 서버
     private var causes: [String] = []
+    private var permissionCause = false
     /// 마지막 다시 붙이기에서 로컬 네트워크 권한 문제가 보였는지 → 메뉴의 '로컬 네트워크 권한 열기'를 보여 줌
     private(set) var needsPermission = false
     /// 다시 붙이기와 페어링이 동시에 서버를 띄우지 않게 (서버를 바꾸는 작업은 한 번에 하나)
@@ -362,7 +373,9 @@ final class Reviver {
         return (pid, names.joined(separator: " ← "))
     }
 
-    private func addCause(_ c: String) {
+    /// permission: 로컬 네트워크 권한 문제를 가리키는 원인 (→ 권한 메뉴를 보여 줌)
+    private func addCause(_ c: String, permission: Bool = false) {
+        if permission { permissionCause = true }
         if !causes.contains(c) { causes.append(c); log(L("  원인 후보: ", "  Possible cause: ") + c) }
     }
 
@@ -372,6 +385,7 @@ final class Reviver {
         serverLock.lock(); defer { serverLock.unlock() }
         log(L("===== 다시 붙이기 시작", "===== Reconnect started"))
         causes = []
+        permissionCause = false
         refreshAdb()
         guard adb != nil else { return finish(false, L("adb를 찾을 수 없어요. 설정에서 adb를 설치해 주세요.", "adb not found. Install it from Settings.")) }
 
@@ -385,7 +399,7 @@ final class Reviver {
         let ownsServer = owner != nil && owner?.pid == server?.processIdentifier
         if let owner {
             log(L("진단: adb 서버 소유 = ", "Diagnosis: adb server owner = ") + (ownsServer ? L("이 앱", "this app") : owner.chain))
-            if !ownsServer { addCause(L("adb 서버를 다른 프로그램(\(owner.chain))이 띄움 → 그 프로그램에 로컬 네트워크 권한이 없으면 휴대폰에 못 붙음", "Another program (\(owner.chain)) started the adb server → it can't reach the phone without Local Network permission")) }
+            if !ownsServer { addCause(L("adb 서버를 다른 프로그램({0})이 띄움 → 그 프로그램에 로컬 네트워크 권한이 없으면 휴대폰에 못 붙음", "Another program ({0}) started the adb server → it can't reach the phone without Local Network permission", owner.chain), permission: true) }
         } else {
             log(L("진단: adb 서버 꺼져 있음", "Diagnosis: adb server not running"))
         }
@@ -396,8 +410,8 @@ final class Reviver {
         log(L("진단: 휴대폰 = ", "Diagnosis: phone = ") + "\(phone)")
         switch phone {
         case .found(let a): lastAddr = a
-        case .unreachable: addCause(L("휴대폰은 보이지만 이 앱에서 접속 불가 → 로컬 네트워크 권한 또는 네트워크(VPN 등) 문제", "Phone is visible but unreachable from this app → Local Network permission or network (VPN, etc.)"))
-        case .permissionDenied: addCause(L("이 앱에 로컬 네트워크 권한 없음 → 시스템 설정 > 개인정보 보호 및 보안 > 로컬 네트워크에서 허용", "This app has no Local Network permission → allow it in System Settings > Privacy & Security > Local Network"))
+        case .unreachable: addCause(L("휴대폰은 보이지만 이 앱에서 접속 불가 → 로컬 네트워크 권한 또는 네트워크(VPN 등) 문제", "Phone is visible but unreachable from this app → Local Network permission or network (VPN, etc.)"), permission: true)
+        case .permissionDenied: addCause(L("이 앱에 로컬 네트워크 권한 없음 → 시스템 설정 > 개인정보 보호 및 보안 > 로컬 네트워크에서 허용", "This app has no Local Network permission → allow it in System Settings > Privacy & Security > Local Network"), permission: true)
         case .notFound: addCause(L("휴대폰이 보이지 않음 → 무선 디버깅 꺼짐 / 화면 꺼짐·절전 / 다른 Wi‑Fi", "Phone not visible → wireless debugging off / screen off or power saving / different Wi‑Fi"))
         }
 
@@ -429,7 +443,7 @@ final class Reviver {
             }
         }
 
-        var needsPermission = causes.contains { $0.contains("로컬 네트워크 권한") || $0.contains("Local Network permission") }
+        var needsPermission = permissionCause
         if case .unreachable = phone { needsPermission = true }
         self.needsPermission = needsPermission
         if needsPermission { NSWorkspace.shared.open(localNetworkSettings) }
@@ -472,7 +486,7 @@ final class Reviver {
             let out = run(adb, ["connect", a], timeout: 12).out
             log("  adb connect \(a): \(out)")
             let l = out.lowercased()
-            if l.contains("no route to host") { addCause(L("No route to host → adb 서버를 띄운 프로그램에 로컬 네트워크 권한 없음 (또는 다른 네트워크)", "No route to host → the program running the adb server has no Local Network permission (or different network)")) }
+            if l.contains("no route to host") { addCause(L("No route to host → adb 서버를 띄운 프로그램에 로컬 네트워크 권한 없음 (또는 다른 네트워크)", "No route to host → the program running the adb server has no Local Network permission (or different network)"), permission: true) }
             if l.contains("connection refused") { addCause(L("Connection refused → 무선 디버깅 포트가 바뀌었거나 꺼짐", "Connection refused → wireless debugging port changed or turned off")) }
             if l.contains("authenticat") { addCause(L("인증 실패 → 이 Mac과 페어링이 안 됨. 메뉴의 '휴대폰 페어링'으로 다시 페어링하세요", "Authentication failed → this Mac isn't paired. Use 'Pair phone' in the menu")) }
             if l.contains("timed out") { addCause(L("시간 초과 → 휴대폰 절전 / 다른 Wi‑Fi / VPN 경로", "Timed out → phone asleep / different Wi‑Fi / VPN route")) }
@@ -542,8 +556,10 @@ enum LinkState { case connected, disconnected, working }
 /// 모양 마스크 (assets/make_icons.sh → 앱 Resources)
 let statusMasks = (body: Bundle.main.image(forResource: "status-body"), waves: Bundle.main.image(forResource: "status-waves"))
 
+/// 그림은 16pt, 좌우 4pt·위아래 1pt를 비운다 — 다른 메뉴 막대 아이콘들과 높이·앞뒤 간격(약 22pt)을 맞춤 (2026-10-28)
 func statusImage(_ state: LinkState) -> NSImage {
-    let img = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
+    let img = NSImage(size: NSSize(width: 24, height: 18), flipped: false) { bounds in
+        let rect = bounds.insetBy(dx: 4, dy: 1)
         let dark = NSAppearance.currentDrawing().bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         let waves: NSColor = state == .connected ? (dark ? NSColor(white: 0.63, alpha: 1) : NSColor(white: 0.29, alpha: 1))
             : state == .disconnected ? NSColor(srgbRed: 1, green: 0.22, blue: 0.24, alpha: 1)
@@ -737,7 +753,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let d = self.reviver.connected()
             let secs = max(1, Int(Date().timeIntervalSince(started).rounded()))
             if r.ok {
-                Notifier.shared.post(ok: true, title: L("다시 연결됐어요", "Reconnected"), body: "\(d?.model ?? d?.serial ?? L("휴대폰", "Phone")) · " + L("\(secs)초 걸렸어요", "took \(secs)s"))
+                Notifier.shared.post(ok: true, title: L("다시 연결됐어요", "Reconnected"), body: "\(d?.model ?? d?.serial ?? L("휴대폰", "Phone")) · " + L("{0}초 걸렸어요", "took {0}s", secs))
             } else {
                 Notifier.shared.post(ok: false, title: L("연결하지 못했어요", "Couldn't reconnect"), body: r.message)
             }
@@ -802,15 +818,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateItem.view = nil
         switch updater.state {
         case .unknown:
-            updateItem.title = L("업데이트 확인 (\(v))", "Check for updates (\(v))"); updateItem.isEnabled = true
+            updateItem.title = L("업데이트 확인 ({0})", "Check for updates ({0})", v); updateItem.isEnabled = true
         case .latest:
-            updateItem.title = L("최신 버전 (\(v))", "Up to date (\(v))"); updateItem.isEnabled = false
+            updateItem.title = L("최신 버전 ({0})", "Up to date ({0})", v); updateItem.isEnabled = false
         case .available(let n):
-            updateItem.title = L("업데이트 (\(v) → \(n))", "Update (\(v) → \(n))"); updateItem.isEnabled = true
+            updateItem.title = L("업데이트 ({0} → {1})", "Update ({0} → {1})", v, n); updateItem.isEnabled = true
         case .checking:
             updateItem.view = SpinnerMenuView(L("업데이트 확인 중…", "Checking for updates…"))
         case .installing(let n):
-            updateItem.view = SpinnerMenuView(L("업데이트하는 중… (\(n))", "Updating… (\(n))"))
+            updateItem.view = SpinnerMenuView(L("업데이트하는 중… ({0})", "Updating… ({0})", n))
         }
     }
 

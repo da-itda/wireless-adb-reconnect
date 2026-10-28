@@ -97,8 +97,8 @@ namespace WirelessAdbReconnect
             {
                 Source = new Uri("pack://application:,,,/WirelessADBReconnect;component/Theme.xaml"),
             });
-            // 영어 화면은 Windows 기본 글꼴(Segoe UI), 한국어는 맑은 고딕
-            if (!Lang.Korean) app.Resources["UiFont"] = new FontFamily("Segoe UI, Malgun Gothic");
+            // 언어에 맞는 글꼴: 영어 Segoe UI, 한국어 맑은 고딕, 일본어 Yu Gothic UI, 중국어 YaHei(간체)·JhengHei(번체)
+            app.Resources["UiFont"] = new FontFamily(Lang.Font(wpf: true));
         }
 
         /// exe에 리소스로 넣은 DLL(QRCoder)을 불러온다 → exe 하나로 배포
@@ -157,7 +157,7 @@ namespace WirelessAdbReconnect
                 var w = new SetupWindow(reviver, false, step, step == SetupWindow.Step.Done ? phone : null);
                 Save(w, Path.Combine(dir, $"setup-{(int)step + 1}.png"));
             }
-            Save(new PairWindow(reviver), Path.Combine(dir, "pair-window.png"));
+            Save(new PairWindow(reviver, autoStart: false), Path.Combine(dir, "pair-window.png"));
         }
 
         static void Save(Window w, string path)
