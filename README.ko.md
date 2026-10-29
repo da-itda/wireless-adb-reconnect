@@ -33,8 +33,9 @@ Android 11부터 생긴 **무선 디버깅**은 편하지만 자주 끊깁니다
 
 ## 기능
 
-- **클릭 한 번으로 다시 연결** — 메뉴 막대·트레이 아이콘을 누르거나 앱을 다시 열기만 하면 됩니다.
+- **클릭 한 번으로 다시 연결** — 메뉴 막대 패널(macOS)의 *다시 연결*이나 트레이 아이콘(Windows)을 누르거나, 앱을 다시 열기만 하면 됩니다.
 - **아이콘 색으로 상태 확인** — 메뉴 막대·트레이 아이콘의 전파가 ⚪ 회색: 연결됨, 🔴 빨강: 끊김 (밝은·어두운 메뉴 막대와 작업 표시줄 모두에서 잘 보이게 회색 사용)
+- **메뉴 막대 패널 (macOS)** — 아이콘을 누르면 카드형 패널이 열립니다: 연결 상태와 휴대폰 IP:포트(누르면 복사), 연결된 휴대폰 이름과 Android 버전, *화면 미러링*과 미러링 옵션, *휴대폰 페어링*, *진단 보기*. 아이콘을 오른쪽 클릭(또는 control-클릭)하면 단축키가 있는 전체 메뉴가 열립니다.
 - **원인 진단** — adb 서버를 누가 띄웠는지, 로컬 네트워크 권한(macOS), mDNS로 휴대폰이 보이는지, 현재 IP:포트, `offline`·`unauthorized` 기기, adb 버전 충돌, 네트워크 '공용' 설정(Windows), 페어링 풀림
 - **순서대로 시도하고 기억** — 처음 성공한 방법에서 멈추고, 다음엔 그 방법부터 시도합니다.
 - **QR 페어링** — Android Studio와 같은 방식, 페어링 코드 입력도 지원. 페어링 중 휴대폰 IP가 바뀌어도 자동으로 다시 시도합니다.
@@ -47,6 +48,8 @@ Android 11부터 생긴 **무선 디버깅**은 편하지만 자주 끊깁니다
 - **언어 자동** — OS 언어에 맞춰 한국어·영어·일본어·중국어(간체·번체)로 표시됩니다. 그 밖의 언어는 영어입니다.
 
 ## 화면
+
+<img src="docs/images/mac-ko-panel.png" width="360" alt="macOS 메뉴 막대 패널">
 
 | macOS | Windows |
 |---|---|
@@ -121,7 +124,7 @@ dotnet build windows\WirelessAdbReconnect\WirelessAdbReconnect.csproj -c Release
 ```
 
 ```
-mac/        Swift 메뉴 막대 앱 (main.swift: 진단·전략, Setup.swift: SwiftUI 마법사·페어링, Mirror.swift: scrcpy 미러링)
+mac/        Swift 메뉴 막대 앱 (main.swift: 진단·전략, Setup.swift: SwiftUI 마법사·페어링, Mirror.swift: scrcpy 미러링, Panel.swift: 메뉴 막대 패널)
 windows/    C# 트레이 앱 (Reviver.cs: 진단·전략, WPF 마법사·페어링, Mirror.cs: scrcpy 미러링)
 assets/     아이콘 (./assets/make_icons.sh로 모두 다시 생성)
 docs/       계획, 문제 해결, 스크린샷

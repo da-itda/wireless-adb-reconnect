@@ -14,6 +14,14 @@ enum MirrorQuality: String, CaseIterable {
         case .high: return L("높음 (16M)", "High (16M)")
         }
     }
+    /// 패널의 세그먼트 버튼용
+    var shortTitle: String {
+        switch self {
+        case .low: return L("낮음", "Low")
+        case .normal: return L("보통", "Normal")
+        case .high: return L("높음", "High")
+        }
+    }
 }
 
 final class ScreenMirror {

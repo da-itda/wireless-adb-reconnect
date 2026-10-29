@@ -788,8 +788,9 @@ func makePairWindow(reviver: Reviver, onClose: @escaping () -> Void) -> NSWindow
 func saveSnapshots(to dir: URL) {
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     let r = Reviver()
-    func save<V: View>(_ view: V, _ name: String) {
+    func save<V: View>(_ view: V, _ name: String, appearance: NSAppearance.Name = .aqua) {
         let host = NSHostingView(rootView: view)
+        host.appearance = NSAppearance(named: appearance)
         let w = NSWindow(contentRect: NSRect(origin: .zero, size: host.fittingSize), styleMask: [.borderless], backing: .buffered, defer: false)
         w.contentView = host
         host.layoutSubtreeIfNeeded()
@@ -824,5 +825,28 @@ func saveSnapshots(to dir: URL) {
         }
         NSGraphicsContext.restoreGraphicsState()
         try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent(name))
+    }
+
+    // 카드형 패널 — 밝게·어둡게 × 연결됨 / 옵션 펼침 / 끊김 + 권한 문제 / 다시 붙이는 중 + 업데이트
+    let pm = ScreenMirror()
+    let galaxy = PhoneInfo(serial: "adb-XXXX._adb-tls-connect._tcp", name: "Galaxy Z Flip", android: "15", addr: "192.168.0.10:37215", since: Date().addingTimeInterval(-12 * 60))
+    let states: [(String, (PanelModel) -> Void)] = [
+        ("connected", { $0.link = .connected; $0.phone = galaxy }),
+        ("options", { $0.link = .connected; $0.phone = galaxy; $0.mirroring = true; $0.showOptions = true }),
+        ("disconnected", { $0.link = .disconnected; $0.needsPermission = true }),
+        ("working", { $0.link = .working; $0.status = L("연결하는 중…", "Connecting…"); $0.update = .available("1.4.0") }),
+    ]
+    for dark in [false, true] {
+        for (name, setup) in states {
+            let m = PanelModel(mirror: pm)
+            m.appVersion = "1.3.1"; m.adbVersion = "36.0.0"; m.lastName = "Galaxy Z Flip"
+            setup(m)
+            let view = PanelView(m: m, solid: dark ? Color(white: 0.17) : Color(white: 0.985))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary.opacity(0.12), lineWidth: 1))
+                .padding(20).background(dark ? Color(hex: 0x2B3440) : Color(hex: 0xC9DDF0))
+                .environment(\.colorScheme, dark ? .dark : .light)
+            save(view, "panel-\(name)-\(dark ? "dark" : "light").png", appearance: dark ? .darkAqua : .aqua)
+        }
     }
 }

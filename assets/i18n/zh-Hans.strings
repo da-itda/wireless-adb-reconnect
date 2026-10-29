@@ -517,3 +517,55 @@
 "See and control your phone on this PC · ~11 MB · open source (Genymobile)" = "在电脑上显示并操作手机屏幕 · 约 11 MB · 开源 (Genymobile)";
 /* ko: 끊기면 작업 표시줄 트레이의 아이콘을 더블클릭하거나, 바탕화면 바로가기를 다시 열기만 하면 돼요. 아이콘의 전파가 회색이면 연결, 빨강이면 끊김이에요. */
 "If it drops, double-click the tray icon or open the desktop shortcut again. Gray waves = connected, red = disconnected." = "断开时，双击通知区域图标或重新打开桌面快捷方式即可。图标的信号波为灰色表示已连接，红色表示已断开。";
+/* ko: 낮음 */
+"Low" = "低";
+/* ko: 보통 */
+"Normal" = "标准";
+/* ko: 높음 */
+"High" = "高";
+/* ko: 도구 */
+"Tools" = "工具";
+/* ko: QR 코드로 새 기기 추가 */
+"Add a new device with a QR code" = "用二维码添加新设备";
+/* ko: 연결 기록과 원인 */
+"Connection history and causes" = "连接记录和原因";
+/* ko: 주소 복사 */
+"Copy address" = "复制地址";
+/* ko: 무선으로 연결됨 */
+"Connected wirelessly" = "已无线连接";
+/* ko: 미러링 중지 */
+"Stop mirroring" = "停止镜像";
+/* ko: 화면 미러링 */
+"Screen mirroring" = "屏幕镜像";
+/* ko: 다시 연결 */
+"Reconnect" = "重新连接";
+/* ko: 연결된 기기 */
+"Connected device" = "已连接的设备";
+/* ko: 미러링 중 */
+"Mirroring" = "正在镜像";
+/* ko: 기기 */
+"Device" = "设备";
+/* ko: 연결 끊김 · 눌러서 다시 연결 */
+"Disconnected · click to reconnect" = "已断开 · 点按重新连接";
+/* ko: 로컬 네트워크 권한이 필요해요 */
+"Local Network permission needed" = "需要本地网络权限";
+/* ko: 시스템 설정에서 이 앱을 허용 */
+"Allow this app in System Settings" = "在系统设置中允许此应用";
+/* ko: 업데이트 {0} */
+"Update {0}" = "更新 {0}";
+/* ko: 받아서 바꾼 뒤 다시 실행해요 */
+"Downloads, replaces and relaunches" = "下载、替换并重新启动";
+/* ko: 업데이트하는 중… */
+"Updating…" = "正在更新…";
+/* ko: 설정 */
+"Settings" = "设置";
+/* ko: 종료 */
+"Quit" = "退出";
+/* ko: 방금 연결됨 */
+"Connected just now" = "刚刚连接";
+/* ko: {0}분째 연결 */
+"Connected for {0} min" = "已连接 {0} 分钟";
+/* ko: {0}시간째 연결 */
+"Connected for {0} h" = "已连接 {0} 小时";
+/* ko: {0}일째 연결 */
+"Connected for {0} d" = "已连接 {0} 天";

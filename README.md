@@ -33,8 +33,9 @@ The usual fix is `adb kill-server`, start it again, look up the new IP:port, `ad
 
 ## Features
 
-- **One click to reconnect** — click the menu bar / tray icon, or just open the app again.
+- **One click to reconnect** — *Reconnect* in the menu bar panel (macOS) or a click on the tray icon (Windows), or just open the app again.
 - **Status at a glance** — the menu bar / tray icon shows ⚪ gray waves when connected, 🔴 red waves when disconnected (gray stays readable on both light and dark menu bars and taskbars).
+- **Menu bar panel (macOS)** — click the icon for a card-style panel: status and the phone's IP:port (one-click copy), the connected phone's name and Android version, *Screen mirroring* with its options, *Pair phone* and *Diagnostics*. Right-click (or Control-click) the icon for the full menu with shortcuts.
 - **Diagnoses the cause** — who owns the adb server, Local Network permission (macOS), phone visible over mDNS, current IP:port, `offline` / `unauthorized` devices, adb version conflicts, Public network profile (Windows), pairing lost.
 - **Tries fixes in order, learns** — stops at the first one that works and tries it first next time.
 - **QR pairing** like Android Studio, plus pairing-code fallback. Retries automatically if the phone's IP changes mid-pairing.
@@ -48,6 +49,8 @@ The usual fix is `adb kill-server`, start it again, look up the new IP:port, `ad
 > The UI follows your OS language: **English, Korean, Japanese, Simplified Chinese, Traditional Chinese**. Any other language shows English.
 
 ## Screenshots
+
+<img src="docs/images/mac-en-panel.png" width="360" alt="macOS menu bar panel">
 
 | macOS | Windows |
 |---|---|
@@ -122,7 +125,7 @@ dotnet build windows\WirelessAdbReconnect\WirelessAdbReconnect.csproj -c Release
 ```
 
 ```
-mac/        Swift menu bar app (main.swift: diagnosis & strategies, Setup.swift: SwiftUI wizard & pairing, Mirror.swift: scrcpy mirroring)
+mac/        Swift menu bar app (main.swift: diagnosis & strategies, Setup.swift: SwiftUI wizard & pairing, Mirror.swift: scrcpy mirroring, Panel.swift: menu bar panel)
 windows/    C# tray app (Reviver.cs: diagnosis & strategies, WPF wizard & pairing, Mirror.cs: scrcpy mirroring)
 assets/     icons (regenerate all with ./assets/make_icons.sh)
 docs/       plan, troubleshooting, screenshots

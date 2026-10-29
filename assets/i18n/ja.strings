@@ -517,3 +517,55 @@
 "See and control your phone on this PC · ~11 MB · open source (Genymobile)" = "スマートフォンの画面を PC に表示して操作 · 約 11 MB · オープンソース (Genymobile)";
 /* ko: 끊기면 작업 표시줄 트레이의 아이콘을 더블클릭하거나, 바탕화면 바로가기를 다시 열기만 하면 돼요. 아이콘의 전파가 회색이면 연결, 빨강이면 끊김이에요. */
 "If it drops, double-click the tray icon or open the desktop shortcut again. Gray waves = connected, red = disconnected." = "切れたときは、通知領域のアイコンをダブルクリックするか、デスクトップのショートカットをもう一度開くだけです。アイコンの電波がグレーなら接続、赤なら切断です。";
+/* ko: 낮음 */
+"Low" = "低";
+/* ko: 보통 */
+"Normal" = "標準";
+/* ko: 높음 */
+"High" = "高";
+/* ko: 도구 */
+"Tools" = "ツール";
+/* ko: QR 코드로 새 기기 추가 */
+"Add a new device with a QR code" = "QR コードで新しいデバイスを追加";
+/* ko: 연결 기록과 원인 */
+"Connection history and causes" = "接続の履歴と原因";
+/* ko: 주소 복사 */
+"Copy address" = "アドレスをコピー";
+/* ko: 무선으로 연결됨 */
+"Connected wirelessly" = "ワイヤレスで接続中";
+/* ko: 미러링 중지 */
+"Stop mirroring" = "ミラーリングを停止";
+/* ko: 화면 미러링 */
+"Screen mirroring" = "画面ミラーリング";
+/* ko: 다시 연결 */
+"Reconnect" = "再接続";
+/* ko: 연결된 기기 */
+"Connected device" = "接続中のデバイス";
+/* ko: 미러링 중 */
+"Mirroring" = "ミラーリング中";
+/* ko: 기기 */
+"Device" = "デバイス";
+/* ko: 연결 끊김 · 눌러서 다시 연결 */
+"Disconnected · click to reconnect" = "切断 · クリックで再接続";
+/* ko: 로컬 네트워크 권한이 필요해요 */
+"Local Network permission needed" = "ローカルネットワークの許可が必要です";
+/* ko: 시스템 설정에서 이 앱을 허용 */
+"Allow this app in System Settings" = "システム設定でこのアプリを許可";
+/* ko: 업데이트 {0} */
+"Update {0}" = "アップデート {0}";
+/* ko: 받아서 바꾼 뒤 다시 실행해요 */
+"Downloads, replaces and relaunches" = "ダウンロードして置き換え、再起動します";
+/* ko: 업데이트하는 중… */
+"Updating…" = "アップデート中…";
+/* ko: 설정 */
+"Settings" = "設定";
+/* ko: 종료 */
+"Quit" = "終了";
+/* ko: 방금 연결됨 */
+"Connected just now" = "たった今接続";
+/* ko: {0}분째 연결 */
+"Connected for {0} min" = "接続して {0} 分";
+/* ko: {0}시간째 연결 */
+"Connected for {0} h" = "接続して {0} 時間";
+/* ko: {0}일째 연결 */
+"Connected for {0} d" = "接続して {0} 日";

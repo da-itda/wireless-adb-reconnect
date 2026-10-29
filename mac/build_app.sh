@@ -14,7 +14,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 TMP="$(mktemp -d)"
 for arch in arm64 x86_64; do
     swiftc -O -swift-version 5 -target $arch-apple-macos13 \
-        "$ROOT/mac/main.swift" "$ROOT/mac/Setup.swift" "$ROOT/mac/Mirror.swift" "$ROOT/mac/Update.swift" -o "$TMP/$arch"
+        "$ROOT/mac/main.swift" "$ROOT/mac/Setup.swift" "$ROOT/mac/Mirror.swift" "$ROOT/mac/Update.swift" "$ROOT/mac/Panel.swift" -o "$TMP/$arch"
 done
 lipo -create "$TMP/arm64" "$TMP/x86_64" -output "$APP/Contents/MacOS/WirelessADBReconnect"
 rm -rf "$TMP"

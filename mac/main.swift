@@ -356,6 +356,25 @@ final class Reviver {
     /// 무선으로 연결된 기기 (USB 연결은 "붙었다"로 치지 않음)
     func connected() -> Device? { devices().first { $0.state == "device" && $0.isWireless } }
 
+    /// 패널에 보여 줄 휴대폰 이름(설정의 기기 이름, 없으면 모델)·Android 버전·IP:포트
+    func phoneInfo(_ d: Device) -> (name: String, android: String?, addr: String?) {
+        guard let adb else { return (d.model ?? d.serial, nil, nil) }
+        func shell(_ args: [String]) -> String? {
+            let r = run(adb, ["-s", d.serial, "shell"] + args, timeout: 5)
+            return r.code == 0 && !r.out.isEmpty && r.out != "null" ? r.out : nil
+        }
+        let name = shell(["settings", "get", "global", "device_name"]) ?? d.model ?? d.serial
+        let addr = d.isIPPort ? d.serial : mdnsServices().first { d.serial.hasPrefix($0.name + ".") }?.addr ?? lastAddr
+        return (name, shell(["getprop", "ro.build.version.release"]), addr)
+    }
+
+    /// "36.0.0" (adb version 둘째 줄 "Version 36.0.0-13206524")
+    func adbVersion() -> String? {
+        guard let adb else { return nil }
+        return run(adb, ["version"], timeout: 5).out.split(separator: "\n").first { $0.hasPrefix("Version ") }
+            .map { String($0.dropFirst(8).split(separator: "-").first ?? "") }
+    }
+
     /// 5037 포트를 연 프로세스와 그 부모 계보. 예) "adb ← zsh ← launchd"
     func serverOwner() -> (pid: Int32, chain: String)? {
         let out = run("/usr/sbin/lsof", ["-nP", "-iTCP:5037", "-sTCP:LISTEN", "-t"], timeout: 5).out
@@ -598,11 +617,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var busy = false
     var setupWindow: NSWindow?
     var pairWindow: NSWindow?
+    /// 오른쪽 클릭 메뉴 (왼쪽 클릭은 카드형 패널)
+    let classicMenu = NSMenu()
+    lazy var panelModel = PanelModel(mirror: mirror)
+    var panel: MenuPanel!
+    /// 연결된 휴대폰 정보 — queue 위에서만 읽고 쓴다 (기기가 바뀔 때만 휴대폰에 다시 물어봄)
+    private var phoneCache: PhoneInfo?
 
     func applicationDidFinishLaunching(_ n: Notification) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = statusImage(.working)
-        let menu = NSMenu()
+        let menu = classicMenu
         menu.autoenablesItems = false   // 항목 활성/비활성은 상태에 따라 직접 정한다
         loginItem.target = self; menu.addItem(loginItem)
         menu.addItem(withTitle: L("휴대폰 페어링…", "Pair phone…"), action: #selector(showPair), keyEquivalent: "p").target = self
@@ -619,7 +644,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: L("진단 보기", "Diagnostics"), action: #selector(openLog), keyEquivalent: "l").target = self
         updateItem.target = self; menu.addItem(updateItem)
         menu.addItem(withTitle: L("종료 (adb 서버도 종료)", "Quit (stops adb server)"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        item.menu = menu
+        item.button?.target = self
+        item.button?.action = #selector(statusClicked(_:))
+        item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        panelModel.appVersion = updater.current
+        panelModel.lastName = UserDefaults.standard.string(forKey: "lastPhoneName")
+        panelModel.act = { [weak self] in self?.panelAction($0) }
+        panel = MenuPanel(model: panelModel)
+        // adb 버전 (바닥 표시) — 다시 붙이는 동안에도 보이게 queue 밖에서
+        DispatchQueue.global().async { [weak self] in
+            let v = self?.reviver.adbVersion()
+            DispatchQueue.main.async { self?.panelModel.adbVersion = v }
+        }
         Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in self?.refresh() }
         // 업데이트: 실행할 때, 그 뒤 한 시간마다 '일주일이 지났는지' 보고 확인
         updater.onChange = { [weak self] in self?.updateUpdateItem() }
@@ -673,6 +709,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let note = NSMenuItem(title: L("옵션은 다음 미러링부터 적용돼요", "Options apply to the next mirroring session"), action: nil, keyEquivalent: "")
         note.isEnabled = false
         mirrorOptions.addItem(note)
+        panelModel.objectWillChange.send()
     }
 
     @objc func setQuality(_ sender: NSMenuItem) {
@@ -733,6 +770,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func updateMirrorItem() {
         mirrorItem.title = mirror.isRunning ? L("화면 미러링 중지", "Stop screen mirroring") : L("화면 미러링 시작하기", "Start screen mirroring")
+        panelModel.mirroring = mirror.isRunning
     }
 
     /// 메뉴 막대 아이콘 + '기기 다시 연결하기' 자리. 끊겼을 때만 누를 수 있다
@@ -741,6 +779,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.button?.toolTip = "\(appShortName) — \(title)"
         reviveItem.title = title
         reviveItem.isEnabled = state == .disconnected
+        panelModel.link = state
+        panelModel.status = title
     }
 
     @objc func reviveNow() {
@@ -768,7 +808,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !busy else { return }
         queue.async {
             let d = self.reviver.connected()
+            if let d {
+                if self.phoneCache?.serial != d.serial {
+                    let p = self.reviver.phoneInfo(d)
+                    self.phoneCache = PhoneInfo(serial: d.serial, name: p.name, android: p.android, addr: p.addr, since: Date())
+                }
+            } else {
+                self.phoneCache = nil
+            }
+            let info = self.phoneCache
             DispatchQueue.main.async {
+                if let info {
+                    self.panelModel.lastName = info.name
+                    UserDefaults.standard.set(info.name, forKey: "lastPhoneName")
+                }
+                if self.panelModel.phone != info { self.panelModel.phone = info }
                 guard !self.busy else { return }
                 if let d {
                     self.show(.connected, L("연결됨 · ", "Connected · ") + (d.model ?? L("휴대폰", "Phone")) + (self.mirror.isRunning ? L(" · 미러링 중", " · Mirroring") : ""))
@@ -776,9 +830,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.show(.disconnected, L("기기 다시 연결하기", "Reconnect device"))
                 }
                 self.permissionItem.isHidden = !self.reviver.needsPermission
+                self.panelModel.needsPermission = self.reviver.needsPermission
                 self.loginItem.state = AppInstall.loginItemEnabled ? .on : .off
                 self.updateMirrorItem()
             }
+        }
+    }
+
+    // MARK: 카드형 패널
+
+    /// 왼쪽 클릭 = 패널 열기/닫기, 오른쪽 클릭·control-클릭 = 예전 메뉴
+    @objc func statusClicked(_ sender: NSStatusBarButton) {
+        let e = NSApp.currentEvent
+        if e?.type == .rightMouseUp || e?.modifierFlags.contains(.control) == true {
+            panel.close()
+            item.menu = classicMenu
+            sender.performClick(nil)
+            item.menu = nil
+            return
+        }
+        if panel.isShown { panel.close(); return }
+        panelModel.now = Date()
+        panel.show(below: sender)
+        refresh()
+    }
+
+    func panelAction(_ a: PanelAction) {
+        switch a {
+        case .mirror: panel.close(); mirrorNow()
+        case .reconnect: reviveNow()
+        case .copyAddress:
+            if let addr = panelModel.phone?.addr {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(addr, forType: .string)
+            }
+        case .pair: panel.close(); showPair()
+        case .diagnostics: panel.close(); openLog()
+        case .permission: panel.close(); openSettings()
+        case .update: updateClicked()
+        case .settings: panel.close(); showSetup()
+        case .quit: NSApp.terminate(nil)
+        case .mirrorLog: panel.close(); openMirrorLog()
+        case .optionsChanged: buildMirrorOptions()
         }
     }
 
@@ -815,6 +908,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func updateUpdateItem() {
         let v = updater.current
+        panelModel.update = updater.state
         updateItem.view = nil
         switch updater.state {
         case .unknown:
