@@ -246,7 +246,6 @@ struct PanelView: View {
                 }
             }
             .buttonStyle(RowButtonStyle())
-            .help(L("미러링 옵션", "Mirroring options"))
             if m.showOptions { options }
         } else {
             SectionTitle(text: L("기기", "Device"))
