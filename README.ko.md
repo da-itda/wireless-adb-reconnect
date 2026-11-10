@@ -54,8 +54,8 @@ Android 11부터 생긴 **무선 디버깅**은 편하지만 자주 끊깁니다
 | macOS | Windows |
 |---|---|
 | ![macOS 설치 — adb](docs/images/mac-ko-setup-1.png) | ![Windows 설치 — adb](docs/images/windows-ko-setup-1.png) |
-| ![macOS 설치 — QR 페어링](docs/images/mac-ko-setup-3.png) | ![Windows 설치 — QR 페어링](docs/images/windows-ko-setup-3.png) |
-| ![macOS 설치 — 연결됨](docs/images/mac-ko-setup-4.png) | ![Windows 설치 — 연결됨](docs/images/windows-ko-setup-4.png) |
+| ![macOS 설치 — QR 페어링](docs/images/mac-ko-setup-4.png) | ![Windows 설치 — QR 페어링](docs/images/windows-ko-setup-3.png) |
+| ![macOS 설치 — 연결됨](docs/images/mac-ko-setup-5.png) | ![Windows 설치 — 연결됨](docs/images/windows-ko-setup-4.png) |
 
 ## 설치
 
@@ -64,7 +64,9 @@ Android 11부터 생긴 **무선 디버깅**은 편하지만 자주 끊깁니다
 ### macOS (13 Ventura 이상)
 1. `WirelessADBReconnect-x.y.z-mac.zip`을 풀고 **Wireless ADB Reconnect**를 엽니다.
 2. 마법사에서 **설치하고 계속** → 응용 프로그램 폴더로 옮겨지고 다시 실행됩니다.
-3. **로컬 네트워크** 허용 창이 뜨면 허용합니다 (휴대폰에 접속하는 데 필요).
+3. **로컬 네트워크** 단계에서 macOS가 묻는 창에 **허용**을 누릅니다 (휴대폰에 접속하는 데 필요).
+   - 전에 '허용 안 함'을 눌렀다면 **시스템 설정에서 켜기**를 누르세요. 설정 옆에 안내 창이 떠서 켤 곳을 알려 주고, 켜면 바로 다시 연결합니다.
+   - 앱은 응용 프로그램 폴더에 있을 때만 네트워크를 씁니다. 다른 위치에서 실행하면 권한 목록에 같은 앱이 하나 더 생기기 때문입니다. 업데이트는 같은 항목을 그대로 쓰고, 삭제 후 재설치해도 항목은 하나만 남습니다.
 
 ### Windows (10 / 11, x64·ARM64)
 1. `WirelessADBReconnect-x.y.z-windows.exe`를 실행합니다 (EV 인증서로 코드 서명, 게시자 **LaonCross Inc.**).
@@ -87,7 +89,8 @@ Android 11부터 생긴 **무선 디버깅**은 편하지만 자주 끊깁니다
    | 2 | 서버 유지 + mDNS로 찾은 `IP:포트`로 `adb connect` | 포트·IP 변경 |
    | 3 | 앱이 서버 재시작 → 자동 연결 대기 → 직접 연결 | 다른 프로그램의 서버, 버전 충돌 |
    | 4 | 다른 mDNS 방식으로 서버 재시작 | adb가 mDNS로 휴대폰을 못 찾음 |
-   | 5 | *(macOS)* 터미널에서 서버 실행 | 앱에 로컬 네트워크 권한이 없음 |
+
+   *(macOS)* 앱에 로컬 네트워크 권한이 없으면 시도하지 않고, 시스템 설정에서 켜는 곳을 안내합니다.
 
 3. **기억** — 붙은 방법을 다음에 먼저 시도
 4. **알림** — 결과, 또는 가장 유력한 원인과 할 일
@@ -124,7 +127,7 @@ dotnet build windows\WirelessAdbReconnect\WirelessAdbReconnect.csproj -c Release
 ```
 
 ```
-mac/        Swift 메뉴 막대 앱 (main.swift: 진단·전략, Setup.swift: SwiftUI 마법사·페어링, Mirror.swift: scrcpy 미러링, Panel.swift: 메뉴 막대 패널)
+mac/        Swift 메뉴 막대 앱 (main.swift: 진단·전략, Setup.swift: SwiftUI 마법사·페어링, Mirror.swift: scrcpy 미러링, Panel.swift: 메뉴 막대 패널, Permission.swift: 로컬 네트워크 권한 확인·안내)
 windows/    C# 트레이 앱 (Reviver.cs: 진단·전략, WPF 마법사·페어링, Mirror.cs: scrcpy 미러링)
 assets/     아이콘 (./assets/make_icons.sh로 모두 다시 생성)
 docs/       계획, 문제 해결, 스크린샷

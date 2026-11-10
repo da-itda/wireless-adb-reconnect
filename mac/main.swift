@@ -31,6 +31,7 @@ func L(_ ko: String, _ en: String, _ args: Any...) -> String {
 let logURL = home.appendingPathComponent("Library/Logs/wireless-adb-reconnect.log")
 let serverLogURL = home.appendingPathComponent("Library/Logs/wireless-adb-reconnect-server.log")
 let supportDir = home.appendingPathComponent("Library/Application Support/\(appName)")
+/// macOS 13~15는 로컬 네트워크 화면, macOS 27은 바로 가는 주소가 없어 '개인정보 보호 및 보안' 첫 화면이 열린다 (NetworkHelp가 안내)
 let localNetworkSettings = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")!
 
 func log(_ msg: String) {
@@ -238,6 +239,7 @@ func findPhone(timeout: TimeInterval = 8) -> PhoneResult {
             case .waiting(let e), .failed(let e):
                 log(L("  휴대폰 접속 테스트 실패: ", "  Phone reachability test failed: ") + "\(e)")
                 if case .dns(let code) = e, code == -65570 { denied = true }
+                if c.currentPath?.unsatisfiedReason == .localNetworkDenied { denied = true; finish(.permissionDenied); return }
                 finish(.unreachable(name))
             default: break
             }
@@ -263,8 +265,10 @@ func findPhone(timeout: TimeInterval = 8) -> PhoneResult {
 
 // MARK: - 전략
 
+// 1.4.0까지 있던 '터미널에서 서버 실행'(권한 없을 때 터미널의 권한을 빌림)은 터미널 창이 떠서 뺐다 (2026-11-10 사용자 요청)
+// → 권한이 없으면 연결하지 않고 권한 안내(도우미 창)를 보여 준다
 enum Strategy: String, CaseIterable {
-    case reconnectOffline, connectOnly, ownServer, ownServerBonjour, terminalNoItda
+    case reconnectOffline, connectOnly, ownServer, ownServerBonjour
 
     var title: String {
         switch self {
@@ -272,7 +276,6 @@ enum Strategy: String, CaseIterable {
         case .connectOnly: return L("서버 유지 + IP:포트 직접 연결", "Keep server, connect to IP:port")
         case .ownServer: return L("앱이 adb 서버 재시작", "Restart adb server (owned by app)")
         case .ownServerBonjour: return L("앱이 adb 서버 재시작 (macOS mDNS 백엔드)", "Restart adb server (macOS mDNS backend)")
-        case .terminalNoItda: return L("터미널에서 서버 실행", "Start server from Terminal")
         }
     }
 }
@@ -289,9 +292,11 @@ final class Reviver {
     private(set) var adb: String?
     private(set) var server: Process?       // 앱이 소유한 nodaemon 서버
     private var causes: [String] = []
-    private var permissionCause = false
-    /// 마지막 다시 붙이기에서 로컬 네트워크 권한 문제가 보였는지 → 메뉴의 '로컬 네트워크 권한 열기'를 보여 줌
+    /// 마지막 다시 붙이기에서 macOS가 로컬 네트워크를 거부했는지 → 메뉴·패널의 권한 안내를 보여 줌
+    /// (접속 시간 초과처럼 권한인지 알 수 없는 실패로는 켜지 않는다)
     private(set) var needsPermission = false
+    /// 권한이 다시 켜진 것을 확인했을 때 (이미 연결돼 있으면 다시 붙이기를 하지 않아 거기서는 풀리지 않음)
+    func permissionAllowed() { needsPermission = false }
     /// 다시 붙이기와 페어링이 동시에 서버를 띄우지 않게 (서버를 바꾸는 작업은 한 번에 하나)
     private let serverLock = NSRecursiveLock()
     private let defaults = UserDefaults.standard
@@ -392,9 +397,7 @@ final class Reviver {
         return (pid, names.joined(separator: " ← "))
     }
 
-    /// permission: 로컬 네트워크 권한 문제를 가리키는 원인 (→ 권한 메뉴를 보여 줌)
-    private func addCause(_ c: String, permission: Bool = false) {
-        if permission { permissionCause = true }
+    private func addCause(_ c: String) {
         if !causes.contains(c) { causes.append(c); log(L("  원인 후보: ", "  Possible cause: ") + c) }
     }
 
@@ -404,7 +407,6 @@ final class Reviver {
         serverLock.lock(); defer { serverLock.unlock() }
         log(L("===== 다시 붙이기 시작", "===== Reconnect started"))
         causes = []
-        permissionCause = false
         refreshAdb()
         guard adb != nil else { return finish(false, L("adb를 찾을 수 없어요. 설정에서 adb를 설치해 주세요.", "adb not found. Install it from Settings.")) }
 
@@ -418,7 +420,7 @@ final class Reviver {
         let ownsServer = owner != nil && owner?.pid == server?.processIdentifier
         if let owner {
             log(L("진단: adb 서버 소유 = ", "Diagnosis: adb server owner = ") + (ownsServer ? L("이 앱", "this app") : owner.chain))
-            if !ownsServer { addCause(L("adb 서버를 다른 프로그램({0})이 띄움 → 그 프로그램에 로컬 네트워크 권한이 없으면 휴대폰에 못 붙음", "Another program ({0}) started the adb server → it can't reach the phone without Local Network permission", owner.chain), permission: true) }
+            if !ownsServer { addCause(L("adb 서버를 다른 프로그램({0})이 띄움 → 그 프로그램에 로컬 네트워크 권한이 없으면 휴대폰에 못 붙음", "Another program ({0}) started the adb server → it can't reach the phone without Local Network permission", owner.chain)) }
         } else {
             log(L("진단: adb 서버 꺼져 있음", "Diagnosis: adb server not running"))
         }
@@ -427,10 +429,11 @@ final class Reviver {
 
         var phone = findPhone()
         log(L("진단: 휴대폰 = ", "Diagnosis: phone = ") + "\(phone)")
+        needsPermission = phone == .permissionDenied
         switch phone {
         case .found(let a): lastAddr = a
-        case .unreachable: addCause(L("휴대폰은 보이지만 이 앱에서 접속 불가 → 로컬 네트워크 권한 또는 네트워크(VPN 등) 문제", "Phone is visible but unreachable from this app → Local Network permission or network (VPN, etc.)"), permission: true)
-        case .permissionDenied: addCause(L("이 앱에 로컬 네트워크 권한 없음 → 시스템 설정 > 개인정보 보호 및 보안 > 로컬 네트워크에서 허용", "This app has no Local Network permission → allow it in System Settings > Privacy & Security > Local Network"), permission: true)
+        case .unreachable: addCause(L("휴대폰이 Wi‑Fi에 보이지만 응답하지 않음 → 휴대폰 화면을 켜거나 무선 디버깅을 껐다 켜 주세요 (VPN도 확인)", "Phone is visible on Wi‑Fi but not responding → wake the phone or turn wireless debugging off and on (check VPN too)"))
+        case .permissionDenied: addCause(L("이 앱에 로컬 네트워크 권한 없음 → 시스템 설정 > 개인정보 보호 및 보안 > 로컬 네트워크에서 허용", "This app has no Local Network permission → allow it in System Settings > Privacy & Security > Local Network"))
         case .notFound: addCause(L("휴대폰이 보이지 않음 → 무선 디버깅 꺼짐 / 화면 꺼짐·절전 / 다른 Wi‑Fi", "Phone not visible → wireless debugging off / screen off or power saving / different Wi‑Fi"))
         }
 
@@ -440,9 +443,7 @@ final class Reviver {
         if ownsServer, case .found = phone { order.append(.connectOnly) }
         let quick = order.count
         if phone != .permissionDenied { order += [.ownServer, .ownServerBonjour] }
-        if phone != .notFound { order.append(.terminalNoItda) }
-        // 터미널 폴백은 창이 뜨고 Terminal이 창을 복원하며 다시 실행해서, 기억해도 앞당기지 않는다 (앱 서버가 먼저)
-        if let w = winner, w != .terminalNoItda, let i = order.firstIndex(of: w), i > quick {
+        if let w = winner, let i = order.firstIndex(of: w), i > quick {
             order.remove(at: i); order.insert(w, at: quick)
         }
         log(L("시도 순서: ", "Order: ") + "\(order.map(\.title))")
@@ -452,7 +453,6 @@ final class Reviver {
             log(L("▶ 시도: ", "▶ Trying: ") + s.title)
             if attempt(s, phone: phone) {
                 winner = s
-                needsPermission = s == .terminalNoItda   // 터미널로만 붙으면 앱에는 권한이 없는 것
                 if let d = connected(), d.isIPPort { lastAddr = d.serial }
                 return finish(true, L("다시 붙었어요 — ", "Reconnected — ") + s.title)
             }
@@ -462,10 +462,6 @@ final class Reviver {
             }
         }
 
-        var needsPermission = permissionCause
-        if case .unreachable = phone { needsPermission = true }
-        self.needsPermission = needsPermission
-        if needsPermission { NSWorkspace.shared.open(localNetworkSettings) }
         return finish(false, causes.first ?? L("원인을 찾지 못했어요 — 진단 보기를 확인해 주세요", "Unknown cause — check Diagnostics"))
     }
 
@@ -489,10 +485,6 @@ final class Reviver {
             stopServer()
             guard startOwnServer(env: s == .ownServerBonjour ? ["ADB_MDNS_OPENSCREEN": "0"] : [:]) else { return false }
             return waitUntil(10) { connected() != nil } || connectCandidates(phone)
-        case .terminalNoItda:
-            stopServer()
-            guard startTerminalServer() else { return false }
-            return waitUntil(10) { connected() != nil } || connectCandidates(phone)
         }
     }
 
@@ -505,7 +497,7 @@ final class Reviver {
             let out = run(adb, ["connect", a], timeout: 12).out
             log("  adb connect \(a): \(out)")
             let l = out.lowercased()
-            if l.contains("no route to host") { addCause(L("No route to host → adb 서버를 띄운 프로그램에 로컬 네트워크 권한 없음 (또는 다른 네트워크)", "No route to host → the program running the adb server has no Local Network permission (or different network)"), permission: true) }
+            if l.contains("no route to host") { addCause(L("No route to host → adb 서버를 띄운 프로그램에 로컬 네트워크 권한 없음 (또는 다른 네트워크)", "No route to host → the program running the adb server has no Local Network permission (or different network)")) }
             if l.contains("connection refused") { addCause(L("Connection refused → 무선 디버깅 포트가 바뀌었거나 꺼짐", "Connection refused → wireless debugging port changed or turned off")) }
             if l.contains("authenticat") { addCause(L("인증 실패 → 이 Mac과 페어링이 안 됨. 메뉴의 '휴대폰 페어링'으로 다시 페어링하세요", "Authentication failed → this Mac isn't paired. Use 'Pair phone' in the menu")) }
             if l.contains("timed out") { addCause(L("시간 초과 → 휴대폰 절전 / 다른 Wi‑Fi / VPN 경로", "Timed out → phone asleep / different Wi‑Fi / VPN route")) }
@@ -542,21 +534,6 @@ final class Reviver {
         server = p
         let ok = waitUntil(5) { portOpen() }
         log(L("  앱 소유 서버 시작 pid ", "  Started app-owned server pid ") + "\(p.processIdentifier) \(env.isEmpty ? "" : "\(env)") → " + (ok ? "OK" : L("포트 안 열림", "port not open")))
-        return ok
-    }
-
-    /// itda(.zshrc 자동 세션)를 끈 별도 Terminal에서 서버를 띄운다 — 앱 권한이 없을 때의 폴백
-    private func startTerminalServer() -> Bool {
-        guard let adb else { return false }
-        let file = supportDir.appendingPathComponent("adb-server.terminal")
-        let plist: [String: Any] = [
-            "name": appShortName, "type": "Window Settings", "ProfileCurrentVersion": 2.07,
-            "CommandString": "\(adb) nodaemon server", "RunCommandAsShell": false, "shellExitAction": 0,
-        ]
-        (plist as NSDictionary).write(to: file, atomically: true)
-        run("/usr/bin/open", ["-n", "-a", "Terminal", "--env", "ITDA_DISABLE=1", file.path], timeout: 10)
-        let ok = waitUntil(10) { portOpen() }
-        if ok, let o = serverOwner() { log(L("  터미널 서버 소유: ", "  Terminal server owner: ") + o.chain) }
         return ok
     }
 
@@ -615,6 +592,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let updateItem = NSMenuItem(title: "", action: #selector(updateClicked), keyEquivalent: "")
     let mirrorOptions = NSMenu()
     var busy = false
+    /// 권한 안내가 떠 있는 동안 refresh마다 권한이 다시 켜졌는지 본다
+    private var checkingPermission = false
     var setupWindow: NSWindow?
     var pairWindow: NSWindow?
     /// 오른쪽 클릭 메뉴 (왼쪽 클릭은 카드형 패널)
@@ -673,7 +652,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 처음이거나(응용 프로그램 폴더 밖) adb가 없으면 설치 마법사, 옮긴 직후엔 이어서
         let firstRun = !AppInstall.isInApplications && !UserDefaults.standard.bool(forKey: "setupShown")
         if reviver.adb == nil || firstRun || CommandLine.arguments.contains("--after-move") { showSetup() }
-        if reviver.adb != nil { reviveNow() }
+        if reviver.adb != nil, installedOrSetup() { reviveNow() }
+        if CommandLine.arguments.contains("--network-help") { openSettings() }   // (개발용) 도우미 창 바로 열기
+    }
+
+    /// 응용 프로그램 폴더 밖(다운로드 폴더, 빌드 폴더 등)에서는 로컬 네트워크를 쓰지 않는다
+    /// — 그 위치용 항목이 권한 목록에 따로 생기기 때문. 대신 설치 단계를 연다
+    func installedOrSetup() -> Bool {
+        if AppInstall.isInApplications { return true }
+        log(L("응용 프로그램 폴더 밖에서 실행 중 → 연결하지 않고 설치 단계를 엶: ", "Running outside Applications → not connecting, opening the install step: ") + Bundle.main.bundleURL.path)
+        openSetup(step: .install)
+        return false
     }
 
     // 이미 실행 중일 때 앱 아이콘을 다시 누르면 → 다시 붙이기
@@ -729,6 +718,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             updateMirrorItem()
             return
         }
+        guard installedOrSetup() else { return }
         guard ScreenMirror.isInstalled else {
             Toast.show(title: L("scrcpy가 필요해요", "scrcpy is required"),
                        body: L("설정 창에서 '화면 미러링(scrcpy)도 설치'를 켜 주세요.", "Turn on 'Also install screen mirroring (scrcpy)' in Settings."), ok: false)
@@ -784,13 +774,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func reviveNow() {
-        guard !busy else { return }
+        guard !busy, installedOrSetup() else { return }
         busy = true
         show(.working, L("연결하는 중…", "Connecting…"))
         let started = Date()
         queue.async {
             let r = self.reviver.revive()
             let d = self.reviver.connected()
+            let denied = self.reviver.needsPermission
+            DispatchQueue.main.async { if denied { LocalNetwork.last = .denied } else if r.ok { LocalNetwork.last = .allowed } }
             let secs = max(1, Int(Date().timeIntervalSince(started).rounded()))
             if r.ok {
                 Notifier.shared.post(ok: true, title: L("다시 연결됐어요", "Reconnected"), body: "\(d?.model ?? d?.serial ?? L("휴대폰", "Phone")) · " + L("{0}초 걸렸어요", "took {0}s", secs))
@@ -829,8 +821,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 } else {
                     self.show(.disconnected, L("기기 다시 연결하기", "Reconnect device"))
                 }
-                self.permissionItem.isHidden = !self.reviver.needsPermission
-                self.panelModel.needsPermission = self.reviver.needsPermission
+                let needs = self.reviver.needsPermission
+                self.permissionItem.isHidden = !needs
+                self.panelModel.needsPermission = needs
+                if needs { self.recheckPermission() }
                 self.loginItem.state = AppInstall.loginItemEnabled ? .on : .off
                 self.updateMirrorItem()
             }
@@ -889,6 +883,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func showPair() {
+        guard installedOrSetup() else { return }
         if pairWindow == nil {
             pairWindow = makePairWindow(reviver: reviver, onClose: { [weak self] in self?.pairWindow = nil; self?.refresh() })
         }
@@ -927,7 +922,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func updateClicked() {
         if case .available = updater.state { updater.install() } else { updater.check() }
     }
-    @objc func openSettings() { NSWorkspace.shared.open(localNetworkSettings) }
+    /// 시스템 설정을 열고 옆에 도우미 창 → 허용되면 안내를 지우고 다시 연결 (터미널 서버로 붙어 있어도 앱 서버로 바꾸지는 않음)
+    @objc func openSettings() { NetworkHelp.shared.show { [weak self] in self?.permissionAllowed(); self?.reviveNow() } }
+
+    /// 시스템 설정에서 스위치를 켠 것을 알아채면 안내를 지운다
+    func recheckPermission() {
+        guard !checkingPermission else { return }
+        checkingPermission = true
+        LocalNetwork.check(timeout: 2) { [weak self] s in
+            self?.checkingPermission = false
+            if s == .allowed { self?.permissionAllowed() }
+        }
+    }
+
+    func permissionAllowed() {
+        log(L("로컬 네트워크 허용 확인 → 권한 안내 지움", "Local Network allowed → cleared the permission notice"))
+        queue.async {
+            self.reviver.permissionAllowed()
+            DispatchQueue.main.async { self.permissionItem.isHidden = true; self.panelModel.needsPermission = false }
+        }
+    }
 }
 
 let app = NSApplication.shared
@@ -939,6 +953,13 @@ if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLi
     app.setActivationPolicy(.prohibited)
     saveSnapshots(to: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
     exit(0)
+}
+// (개발용) 로컬 네트워크 권한 상태를 로그에 남기고 끝: open -n <앱> --args --check-network
+// 터미널에서 실행 파일을 바로 띄우면 터미널의 권한이 확인되므로 open으로 띄운다
+if CommandLine.arguments.contains("--check-network") {
+    app.setActivationPolicy(.prohibited)
+    LocalNetwork.check(timeout: 5) { s in log(L("로컬 네트워크 확인: ", "Local Network check: ") + "\(s)"); exit(0) }
+    app.run()
 }
 let delegate = AppDelegate()
 app.delegate = delegate

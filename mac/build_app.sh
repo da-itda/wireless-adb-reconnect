@@ -14,7 +14,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 TMP="$(mktemp -d)"
 for arch in arm64 x86_64; do
     swiftc -O -swift-version 5 -target $arch-apple-macos13 \
-        "$ROOT/mac/main.swift" "$ROOT/mac/Setup.swift" "$ROOT/mac/Mirror.swift" "$ROOT/mac/Update.swift" "$ROOT/mac/Panel.swift" -o "$TMP/$arch"
+        "$ROOT/mac/main.swift" "$ROOT/mac/Setup.swift" "$ROOT/mac/Mirror.swift" "$ROOT/mac/Update.swift" "$ROOT/mac/Panel.swift" "$ROOT/mac/Permission.swift" -o "$TMP/$arch"
 done
 lipo -create "$TMP/arm64" "$TMP/x86_64" -output "$APP/Contents/MacOS/WirelessADBReconnect"
 rm -rf "$TMP"
@@ -30,8 +30,8 @@ cat > "$APP/Contents/Info.plist" <<EOF
     <key>CFBundleName</key><string>ADB Reconnect</string>
     <key>CFBundleDisplayName</key><string>$NAME</string>
     <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
-    <key>CFBundleVersion</key><string>1.4.0</string>
-    <key>CFBundleShortVersionString</key><string>1.4.0</string>
+    <key>CFBundleVersion</key><string>1.4.1</string>
+    <key>CFBundleShortVersionString</key><string>1.4.1</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleExecutable</key><string>WirelessADBReconnect</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
@@ -86,4 +86,15 @@ if [ -n "$NOTARY_PROFILE" ]; then
     rm -f "$ZIP" && ditto -c -k --keepParent "$APP" "$ZIP"
     spctl -a -vv "$APP" 2>&1 | head -2
     echo "공증 완료: $APP (배포용 zip: $ZIP)"
+fi
+
+# 이 Mac에 설치(선택): INSTALL=1 ./mac/build_app.sh — 실행 중인 앱을 끄고 /Applications 앱을 바꾼 뒤 다시 연다.
+# 빌드 폴더의 앱은 지운다: 그 자리에 앱 파일이 남아 있으면 시스템 설정 › 로컬 네트워크 목록에 같은 앱이 하나 더 보인다 (TROUBLESHOOTING)
+if [ -n "$INSTALL" ]; then
+    DEST="/Applications/$NAME.app"
+    osascript -e "quit app id \"$BUNDLE_ID\"" 2>/dev/null || true
+    for _ in 1 2 3 4 5 6 7 8 9 10; do pgrep -f "$DEST/Contents/MacOS/" >/dev/null || break; sleep 0.5; done
+    rm -rf "$DEST" && ditto "$APP" "$DEST" && rm -rf "$APP"
+    open "$DEST"
+    echo "설치: $DEST (빌드 폴더의 앱은 지움)"
 fi

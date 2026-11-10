@@ -266,8 +266,6 @@
 "Restart adb server (owned by app)" = "アプリが adb サーバーを再起動";
 /* ko: 앱이 adb 서버 재시작 (macOS mDNS 백엔드) */
 "Restart adb server (macOS mDNS backend)" = "アプリが adb サーバーを再起動 (macOS mDNS バックエンド)";
-/* ko: 터미널에서 서버 실행 */
-"Start server from Terminal" = "ターミナルからサーバーを起動";
 /* ko: adb 버전 불일치 → 다른 adb(Android Studio 등)가 서버를 띄움 */
 "adb version mismatch → another adb (Android Studio, etc.) started the server" = "adb のバージョン不一致 → 別の adb (Android Studio など) がサーバーを起動";
 /* ko: launchd(데몬, 띄운 프로그램 불명) */
@@ -294,8 +292,6 @@
 "Allow debugging on the phone (unauthorized)" = "スマートフォンでデバッグを許可する必要があります (unauthorized)";
 /* ko: 진단: 휴대폰 =  */
 "Diagnosis: phone = " = "診断: スマートフォン = ";
-/* ko: 휴대폰은 보이지만 이 앱에서 접속 불가 → 로컬 네트워크 권한 또는 네트워크(VPN 등) 문제 */
-"Phone is visible but unreachable from this app → Local Network permission or network (VPN, etc.)" = "スマートフォンは見えますが、このアプリから接続できません → ローカルネットワークの許可またはネットワーク (VPN など) の問題";
 /* ko: 이 앱에 로컬 네트워크 권한 없음 → 시스템 설정 > 개인정보 보호 및 보안 > 로컬 네트워크에서 허용 */
 "This app has no Local Network permission → allow it in System Settings > Privacy & Security > Local Network" = "このアプリにローカルネットワークの許可がありません → システム設定 > プライバシーとセキュリティ > ローカルネットワーク で許可してください";
 /* ko: 휴대폰이 보이지 않음 → 무선 디버깅 꺼짐 / 화면 꺼짐·절전 / 다른 Wi‑Fi */
@@ -332,8 +328,6 @@
 "  Started app-owned server pid " = "  アプリ所有のサーバーを起動 pid ";
 /* ko: 포트 안 열림 */
 "port not open" = "ポートが開いていません";
-/* ko:   터미널 서버 소유:  */
-"  Terminal server owner: " = "  ターミナルのサーバー所有者: ";
 /* ko: 확인 중… */
 "Checking…" = "確認中…";
 /* ko: 로컬 네트워크 권한 열기 */
@@ -569,3 +563,57 @@
 "Connected for {0} h" = "接続して {0} 時間";
 /* ko: {0}일째 연결 */
 "Connected for {0} d" = "接続して {0} 日";
+
+/* 로컬 네트워크 권한 (1.4.1) */
+/* ko: 로컬 네트워크를 허용해 주세요 */
+"Allow Local Network access" = "ローカルネットワークを許可してください";
+/* ko: 같은 Wi‑Fi의 휴대폰을 찾는 데 필요해요 */
+"Needed to find your phone on Wi‑Fi" = "Wi‑Fi 上のスマートフォンを見つけるのに必要です";
+/* ko: 시스템 설정 › 개인정보 보호 및 보안에서 '로컬 네트워크'를 누르세요 */
+"In System Settings › Privacy & Security, click 'Local Network'" = "システム設定 › プライバシーとセキュリティで「ローカルネットワーク」をクリック";
+/* ko: 목록에서 이 앱의 스위치를 켜세요 */
+"Turn on the switch for this app" = "一覧でこのアプリのスイッチをオンにします";
+/* ko: 허용됐어요 — 다시 연결할게요 */
+"Allowed — reconnecting" = "許可されました — 再接続します";
+/* ko: 켜면 바로 알아채고 다시 연결해요 */
+"Reconnects as soon as you turn it on" = "オンにするとすぐに再接続します";
+/* ko: 설정 다시 열기 */
+"Open Settings again" = "設定をもう一度開く";
+/* ko: 로컬 네트워크 도우미 열기 */
+"Opened Local Network helper" = "ローカルネットワークの案内を表示";
+/* ko: 로컬 네트워크 허용됨 */
+"Local Network allowed" = "ローカルネットワークが許可されました";
+/* ko: 네트워크 허용 */
+"Local Network" = "ローカルネットワーク";
+/* ko: 1 / 4단계 */
+"Step 1 of 4" = "ステップ 1/4";
+/* ko: 2 / 4단계 */
+"Step 2 of 4" = "ステップ 2/4";
+/* ko: 3 / 4단계 */
+"Step 3 of 4" = "ステップ 3/4";
+/* ko: 4 / 4단계 · 처음 한 번만 */
+"Step 4 of 4 · first time only" = "ステップ 4/4 · 初回のみ";
+/* ko: 같은 Wi‑Fi에 있는 휴대폰을 찾고 다시 붙이려면 macOS의 로컬 네트워크 권한이 필요해요. */
+"macOS Local Network permission is needed to find your phone on the same Wi‑Fi and reconnect it." = "同じ Wi‑Fi のスマートフォンを見つけて再接続するには、macOS のローカルネットワーク権限が必要です。";
+/* ko: 허용되어 있어요 */
+"Allowed" = "許可されています";
+/* ko: 아직 허용되지 않았어요 */
+"Not allowed yet" = "まだ許可されていません";
+/* ko: macOS가 묻는 창이 떴다면 '허용'을 눌러 주세요. 창이 없었다면 전에 '허용 안 함'을 누른 거예요 — 시스템 설정에서 켜 주세요. */
+"If macOS asks, click 'Allow'. If nothing appeared, it was denied before — turn it on in System Settings." = "macOS から確認が表示されたら「許可」をクリックしてください。何も表示されない場合は以前に拒否されています — システム設定でオンにしてください。";
+/* ko: macOS가 묻는 창이 뜨면 '허용'을 눌러 주세요. */
+"If macOS asks, click 'Allow'." = "macOS から確認が表示されたら「許可」をクリックしてください。";
+/* ko: 휴대폰과 주고받는 것은 adb 연결뿐이고, 같은 Wi‑Fi 밖으로는 나가지 않아요. */
+"Only the adb connection to your phone uses it, and it stays on your Wi‑Fi." = "使うのはスマートフォンとの adb 接続だけで、Wi‑Fi の外には出ません。";
+/* ko: 나중에 하기 */
+"Later" = "後で";
+/* ko: 시스템 설정에서 켜기 */
+"Turn on in System Settings" = "システム設定でオンにする";
+/* ko: 휴대폰이 Wi‑Fi에 보이지만 응답하지 않음 → 휴대폰 화면을 켜거나 무선 디버깅을 껐다 켜 주세요 (VPN도 확인) */
+"Phone is visible on Wi‑Fi but not responding → wake the phone or turn wireless debugging off and on (check VPN too)" = "スマートフォンは Wi‑Fi 上に見えますが応答しません → 画面をオンにするか、ワイヤレスデバッグをオフにしてからオンにしてください(VPN も確認)";
+/* ko: 응용 프로그램 폴더 밖에서 실행 중 → 연결하지 않고 설치 단계를 엶:  */
+"Running outside Applications → not connecting, opening the install step: " = "アプリケーションフォルダの外で実行中 → 接続せずにインストールの手順を開きます: ";
+/* ko: 로컬 네트워크 확인:  */
+"Local Network check: " = "ローカルネットワークの確認: ";
+/* ko: 로컬 네트워크 허용 확인 → 권한 안내 지움 */
+"Local Network allowed → cleared the permission notice" = "ローカルネットワークの許可を確認 → 権限の案内を消しました";

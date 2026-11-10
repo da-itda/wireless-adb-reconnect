@@ -266,8 +266,6 @@
 "Restart adb server (owned by app)" = "由 App 重新啟動 adb 伺服器";
 /* ko: 앱이 adb 서버 재시작 (macOS mDNS 백엔드) */
 "Restart adb server (macOS mDNS backend)" = "由 App 重新啟動 adb 伺服器 (macOS mDNS 後端)";
-/* ko: 터미널에서 서버 실행 */
-"Start server from Terminal" = "從「終端機」啟動伺服器";
 /* ko: adb 버전 불일치 → 다른 adb(Android Studio 등)가 서버를 띄움 */
 "adb version mismatch → another adb (Android Studio, etc.) started the server" = "adb 版本不符 → 其他 adb (Android Studio 等) 啟動了伺服器";
 /* ko: launchd(데몬, 띄운 프로그램 불명) */
@@ -294,8 +292,6 @@
 "Allow debugging on the phone (unauthorized)" = "需要在手機上允許偵錯 (unauthorized)";
 /* ko: 진단: 휴대폰 =  */
 "Diagnosis: phone = " = "診斷: 手機 = ";
-/* ko: 휴대폰은 보이지만 이 앱에서 접속 불가 → 로컬 네트워크 권한 또는 네트워크(VPN 등) 문제 */
-"Phone is visible but unreachable from this app → Local Network permission or network (VPN, etc.)" = "看得到手機，但本 App 無法連線 → 區域網路權限或網路 (VPN 等) 問題";
 /* ko: 이 앱에 로컬 네트워크 권한 없음 → 시스템 설정 > 개인정보 보호 및 보안 > 로컬 네트워크에서 허용 */
 "This app has no Local Network permission → allow it in System Settings > Privacy & Security > Local Network" = "本 App 沒有區域網路權限 → 請在「系統設定 > 隱私權與安全性 > 區域網路」中允許";
 /* ko: 휴대폰이 보이지 않음 → 무선 디버깅 꺼짐 / 화면 꺼짐·절전 / 다른 Wi‑Fi */
@@ -332,8 +328,6 @@
 "  Started app-owned server pid " = "  已啟動 App 擁有的伺服器 pid ";
 /* ko: 포트 안 열림 */
 "port not open" = "連接埠未開啟";
-/* ko:   터미널 서버 소유:  */
-"  Terminal server owner: " = "  「終端機」伺服器擁有者: ";
 /* ko: 확인 중… */
 "Checking…" = "正在檢查…";
 /* ko: 로컬 네트워크 권한 열기 */
@@ -569,3 +563,57 @@
 "Connected for {0} h" = "已連線 {0} 小時";
 /* ko: {0}일째 연결 */
 "Connected for {0} d" = "已連線 {0} 天";
+
+/* 로컬 네트워크 권한 (1.4.1) */
+/* ko: 로컬 네트워크를 허용해 주세요 */
+"Allow Local Network access" = "請允許區域網路存取";
+/* ko: 같은 Wi‑Fi의 휴대폰을 찾는 데 필요해요 */
+"Needed to find your phone on Wi‑Fi" = "用於在 Wi‑Fi 上找到你的手機";
+/* ko: 시스템 설정 › 개인정보 보호 및 보안에서 '로컬 네트워크'를 누르세요 */
+"In System Settings › Privacy & Security, click 'Local Network'" = "在「系統設定 › 隱私權與安全性」中按一下「區域網路」";
+/* ko: 목록에서 이 앱의 스위치를 켜세요 */
+"Turn on the switch for this app" = "在列表中開啟此 App 的開關";
+/* ko: 허용됐어요 — 다시 연결할게요 */
+"Allowed — reconnecting" = "已允許 — 正在重新連線";
+/* ko: 켜면 바로 알아채고 다시 연결해요 */
+"Reconnects as soon as you turn it on" = "開啟後會立即重新連線";
+/* ko: 설정 다시 열기 */
+"Open Settings again" = "再次打開設定";
+/* ko: 로컬 네트워크 도우미 열기 */
+"Opened Local Network helper" = "已打開區域網路引導";
+/* ko: 로컬 네트워크 허용됨 */
+"Local Network allowed" = "區域網路已允許";
+/* ko: 네트워크 허용 */
+"Local Network" = "區域網路";
+/* ko: 1 / 4단계 */
+"Step 1 of 4" = "第 1 步，共 4 步";
+/* ko: 2 / 4단계 */
+"Step 2 of 4" = "第 2 步，共 4 步";
+/* ko: 3 / 4단계 */
+"Step 3 of 4" = "第 3 步，共 4 步";
+/* ko: 4 / 4단계 · 처음 한 번만 */
+"Step 4 of 4 · first time only" = "第 4 步，共 4 步 · 僅首次";
+/* ko: 같은 Wi‑Fi에 있는 휴대폰을 찾고 다시 붙이려면 macOS의 로컬 네트워크 권한이 필요해요. */
+"macOS Local Network permission is needed to find your phone on the same Wi‑Fi and reconnect it." = "需要 macOS 的區域網路權限，才能在同一個 Wi‑Fi 中找到並重新連線手機。";
+/* ko: 허용되어 있어요 */
+"Allowed" = "已允許";
+/* ko: 아직 허용되지 않았어요 */
+"Not allowed yet" = "尚未允許";
+/* ko: macOS가 묻는 창이 떴다면 '허용'을 눌러 주세요. 창이 없었다면 전에 '허용 안 함'을 누른 거예요 — 시스템 설정에서 켜 주세요. */
+"If macOS asks, click 'Allow'. If nothing appeared, it was denied before — turn it on in System Settings." = "如果 macOS 跳出詢問，請按一下「允許」。如果沒有出現，表示之前已拒絕 — 請在系統設定中開啟。";
+/* ko: macOS가 묻는 창이 뜨면 '허용'을 눌러 주세요. */
+"If macOS asks, click 'Allow'." = "如果 macOS 跳出詢問，請按一下「允許」。";
+/* ko: 휴대폰과 주고받는 것은 adb 연결뿐이고, 같은 Wi‑Fi 밖으로는 나가지 않아요. */
+"Only the adb connection to your phone uses it, and it stays on your Wi‑Fi." = "僅用於與手機的 adb 連線，不會離開你的 Wi‑Fi。";
+/* ko: 나중에 하기 */
+"Later" = "稍後";
+/* ko: 시스템 설정에서 켜기 */
+"Turn on in System Settings" = "在系統設定中開啟";
+/* ko: 휴대폰이 Wi‑Fi에 보이지만 응답하지 않음 → 휴대폰 화면을 켜거나 무선 디버깅을 껐다 켜 주세요 (VPN도 확인) */
+"Phone is visible on Wi‑Fi but not responding → wake the phone or turn wireless debugging off and on (check VPN too)" = "手機在 Wi‑Fi 上可見但沒有回應 → 請喚醒手機，或關閉再開啟無線偵錯(也請檢查 VPN)";
+/* ko: 응용 프로그램 폴더 밖에서 실행 중 → 연결하지 않고 설치 단계를 엶:  */
+"Running outside Applications → not connecting, opening the install step: " = "在「應用程式」檔案夾之外執行 → 不連線，打開安裝步驟：";
+/* ko: 로컬 네트워크 확인:  */
+"Local Network check: " = "區域網路檢查：";
+/* ko: 로컬 네트워크 허용 확인 → 권한 안내 지움 */
+"Local Network allowed → cleared the permission notice" = "已確認區域網路允許 → 已清除權限提示";

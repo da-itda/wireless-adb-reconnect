@@ -1,6 +1,6 @@
 // 설치 마법사 · 휴대폰 페어링 화면 (SwiftUI) — 디자인 시안: https://claude.ai/artifact/AcexxtvRGVUCuaJBxK7k8q
-// 마법사: ① adb 준비 → ② 앱 설치(응용 프로그램 폴더·로그인 시 실행) → ③ 휴대폰 페어링 → ④ 완료
-// 이미 된 단계(adb 있음, 응용 프로그램 폴더에 있음, 이미 연결됨)는 "건너뜀"으로 표시하고 넘어간다.
+// 마법사: ① adb 준비 → ② 앱 설치(응용 프로그램 폴더·로그인 시 실행) → ③ 로컬 네트워크 허용 → ④ 휴대폰 페어링 → ⑤ 완료
+// 이미 된 단계(adb 있음, 응용 프로그램 폴더에 있음, 이미 허용됨, 이미 연결됨)는 "건너뜀"으로 표시하고 넘어간다.
 // 페어링: QR 내용 WIFI:T:ADB;S:<이름>;P:<비밀번호>;; → 휴대폰이 그 이름으로 _adb-tls-pairing 을 알림 → adb pair
 import AppKit
 import CoreImage
@@ -206,7 +206,7 @@ final class PairModel: ObservableObject {
 // MARK: - 마법사 상태
 
 final class SetupModel: ObservableObject {
-    enum Step: Int, CaseIterable { case adb, install, pair, done }
+    enum Step: Int, CaseIterable { case adb, install, network, pair, done }
     @Published var step: Step = .adb
     @Published var skipped: Set<Step> = []
     @Published var useStudio = false
@@ -218,6 +218,9 @@ final class SetupModel: ObservableObject {
     let hasScrcpy = ScreenMirror.isInstalled
     let hasBrew = ScreenMirror.brewPath() != nil
     @Published var device: Device?
+    /// ③ 로컬 네트워크 권한 (단계에 있는 동안 2초마다 확인)
+    @Published var network: LocalNetwork.Status = LocalNetwork.last
+    private var networkTimer: Timer?
     /// 완료 화면에 보여 줄 IP (스냅샷에서는 예시 주소)
     var shownIP: String?
     let reviver: Reviver
@@ -225,8 +228,12 @@ final class SetupModel: ObservableObject {
     var onAdbReady: () -> Void = {}
     var close: () -> Void = {}
 
+    /// 스냅샷용 (네트워크 확인 등 실제 동작은 하지 않음)
+    let isPreview: Bool
+
     init(reviver: Reviver, connected: Device? = nil, preview: Step? = nil, startAt: Step? = nil) {
         self.reviver = reviver
+        isPreview = preview != nil
         pair = PairModel(reviver: reviver)
         shownIP = preview == nil ? reviver.lastAddr?.split(separator: ":").first.map(String.init) : "192.168.0.10"
         device = connected ?? (preview == nil ? reviver.connected() : nil)
@@ -236,6 +243,7 @@ final class SetupModel: ObservableObject {
         let mirrorDeclined = UserDefaults.standard.bool(forKey: "mirrorDeclined")
         if AppInstall.isInApplications && (hasScrcpy || mirrorDeclined) && startAt != .install { skipped.insert(.install) }
         wantMirror = hasScrcpy || (hasBrew && !mirrorDeclined)
+        if LocalNetwork.last == .allowed { skipped.insert(.network) }
         // 이미 연결됐거나, 이 Mac에서 무선으로 붙은 적이 있으면(=페어링됨) 페어링 단계는 건너뜀
         if device != nil || (preview == nil && reviver.winner != nil) { skipped.insert(.pair) }
         if let startAt { skipped.remove(startAt) }
@@ -264,6 +272,30 @@ final class SetupModel: ObservableObject {
     var canGoBack: Bool {
         Step.allCases.prefix(while: { $0 != step }).contains { !skipped.contains($0) }
     }
+
+    // ③ 로컬 네트워크 — 확인을 시작하면 처음엔 macOS가 '허용 / 허용 안 함' 창을 띄운다
+    func watchNetwork() {
+        guard networkTimer == nil else { return }
+        checkNetwork()
+        networkTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.checkNetwork() }
+    }
+
+    func stopNetwork() { networkTimer?.invalidate(); networkTimer = nil }
+
+    private func checkNetwork() {
+        LocalNetwork.check(timeout: 1.8) { [weak self] s in
+            guard let self, s != .unknown || self.network == .unknown else { return }
+            let became = s == .allowed && self.network != .allowed
+            self.network = s
+            if s == .allowed { self.stopNetwork() }
+            // 이 단계에서 허용하면 잠깐 보여 주고 넘어간다
+            if became, self.step == .network {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { if self.step == .network { self.next() } }
+            }
+        }
+    }
+
+    func openNetworkHelp() { NetworkHelp.shared.show(onAllowed: onAdbReady) }
 
     // ① adb
     func installAdb() {
@@ -394,6 +426,7 @@ struct SetupView: View {
                 switch m.step {
                 case .adb: AdbStep(m: m)
                 case .install: InstallStep(m: m)
+                case .network: NetworkStep(m: m)
                 case .pair: PairStep(m: m, pair: m.pair)
                 case .done: DoneStep(m: m)
                 }
@@ -410,7 +443,7 @@ struct SetupView: View {
 
 struct Sidebar: View {
     @ObservedObject var m: SetupModel
-    let titles: [(SetupModel.Step, String)] = [(.adb, L("adb 준비", "Get adb")), (.install, L("앱 설치", "Install")), (.pair, L("휴대폰 페어링", "Pair phone")), (.done, L("완료", "Done"))]
+    let titles: [(SetupModel.Step, String)] = [(.adb, L("adb 준비", "Get adb")), (.install, L("앱 설치", "Install")), (.network, L("네트워크 허용", "Local Network")), (.pair, L("휴대폰 페어링", "Pair phone")), (.done, L("완료", "Done"))]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
@@ -511,7 +544,7 @@ struct AdbStep: View {
     @ObservedObject var m: SetupModel
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            StepHeader(eyebrow: L("1 / 3단계", "Step 1 of 3"), title: L("adb를 준비할게요", "Let's get adb"),
+            StepHeader(eyebrow: L("1 / 4단계", "Step 1 of 4"), title: L("adb를 준비할게요", "Let's get adb"),
                        desc: L("이 Mac에서 adb를 찾지 못했어요. 앱에 필요한 건 adb뿐이라 가벼운 설치를 추천해요.", "adb wasn't found on this Mac. The app only needs adb, so the lightweight install is recommended."))
             VStack(spacing: 10) {
                 ChoiceCard(selected: !m.useStudio, title: L("adb만 설치", "Install adb only"), detail: L("Google 공식 platform-tools · 약 15MB · 1분 이내", "Google's official platform-tools · ~15 MB · under a minute"), badge: L("추천", "Recommended")) { m.useStudio = false }
@@ -538,7 +571,7 @@ struct InstallStep: View {
     @ObservedObject var m: SetupModel
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            StepHeader(eyebrow: L("2 / 3단계", "Step 2 of 3"), title: AppInstall.isInApplications ? L("설치되어 있어요", "Installed") : L("앱을 설치할게요", "Install the app"),
+            StepHeader(eyebrow: L("2 / 4단계", "Step 2 of 4"), title: AppInstall.isInApplications ? L("설치되어 있어요", "Installed") : L("앱을 설치할게요", "Install the app"),
                        desc: AppInstall.isInApplications ? L("자동 실행을 바꾸거나, 화면 미러링(scrcpy)을 추가로 설치할 수 있어요.", "Change launch at login, or add screen mirroring (scrcpy).")
                                                          : L("설치하면 메뉴 막대에 머물면서 무선 연결이 끊기면 바로 다시 붙여요.", "It stays in the menu bar and reconnects as soon as wireless debugging drops."))
             HStack(spacing: 12) {
@@ -590,6 +623,61 @@ struct InstallStep: View {
                     .buttonStyle(PrimaryButton()).disabled(m.busy)
             }.frame(height: 44)
         }
+    }
+}
+
+struct NetworkStep: View {
+    @ObservedObject var m: SetupModel
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            StepHeader(eyebrow: L("3 / 4단계", "Step 3 of 4"), title: L("로컬 네트워크를 허용해 주세요", "Allow Local Network access"),
+                       desc: L("같은 Wi‑Fi에 있는 휴대폰을 찾고 다시 붙이려면 macOS의 로컬 네트워크 권한이 필요해요.", "macOS Local Network permission is needed to find your phone on the same Wi‑Fi and reconnect it."))
+            HStack(spacing: 12) {
+                switch m.network {
+                case .allowed:
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 20)).foregroundColor(.brandText)
+                    Text(L("허용되어 있어요", "Allowed")).font(.system(size: 14, weight: .semibold))
+                case .denied:
+                    Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 18)).foregroundColor(Color(hex: 0xE8890C))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L("아직 허용되지 않았어요", "Not allowed yet")).font(.system(size: 14, weight: .semibold))
+                        Text(L("macOS가 묻는 창이 떴다면 '허용'을 눌러 주세요. 창이 없었다면 전에 '허용 안 함'을 누른 거예요 — 시스템 설정에서 켜 주세요.", "If macOS asks, click 'Allow'. If nothing appeared, it was denied before — turn it on in System Settings."))
+                            .font(.system(size: 12)).foregroundColor(.muted).fixedSize(horizontal: false, vertical: true)
+                    }
+                case .unknown:
+                    ProgressView().controlSize(.small)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L("확인하는 중…", "Checking…")).font(.system(size: 14, weight: .semibold))
+                        Text(L("macOS가 묻는 창이 뜨면 '허용'을 눌러 주세요.", "If macOS asks, click 'Allow'.")).font(.system(size: 12)).foregroundColor(.muted)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 14)
+            .background(RoundedRectangle(cornerRadius: 12).fill(m.network == .allowed ? Color.mint : Color.soft))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(m.network == .allowed ? Color.brand : Color.line))
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "info.circle").foregroundColor(.muted)
+                Text(L("휴대폰과 주고받는 것은 adb 연결뿐이고, 같은 Wi‑Fi 밖으로는 나가지 않아요.", "Only the adb connection to your phone uses it, and it stays on your Wi‑Fi."))
+                    .font(.system(size: 12)).foregroundColor(.ink2).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Color.soft))
+            Spacer(minLength: 0)
+            HStack {
+                if m.canGoBack { Button(L("이전", "Back")) { m.back() }.buttonStyle(TextButton()) }
+                Spacer()
+                if m.network != .allowed {
+                    Button(L("나중에 하기", "Later")) { m.next() }.buttonStyle(TextButton())
+                    Button(L("시스템 설정에서 켜기", "Turn on in System Settings")) { m.openNetworkHelp() }.buttonStyle(OutlineButton())
+                } else {
+                    Button(L("계속", "Continue")) { m.next() }.buttonStyle(PrimaryButton())
+                }
+            }.frame(height: 44)
+        }
+        .onAppear { if !m.isPreview { m.watchNetwork() } }
+        .onDisappear { m.stopNetwork() }
     }
 }
 
@@ -660,7 +748,7 @@ struct PairStep: View {
     var autoStart = true
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            StepHeader(eyebrow: L("3 / 3단계 · 처음 한 번만", "Step 3 of 3 · first time only"), title: L("휴대폰으로 QR을 찍어 주세요", "Scan the QR with your phone"))
+            StepHeader(eyebrow: L("4 / 4단계 · 처음 한 번만", "Step 4 of 4 · first time only"), title: L("휴대폰으로 QR을 찍어 주세요", "Scan the QR with your phone"))
             PairContent(pair: pair, autoStart: autoStart)
             Spacer(minLength: 0)
             HStack {
@@ -770,7 +858,7 @@ private func hostWindow<V: View>(_ view: V, title: String, onClose: @escaping ()
 func makeSetupWindow(reviver: Reviver, startAt: SetupModel.Step? = nil, onAdbReady: @escaping () -> Void, onClose: @escaping () -> Void) -> NSWindow {
     let m = SetupModel(reviver: reviver, startAt: startAt)
     m.onAdbReady = onAdbReady
-    let w = hostWindow(SetupView(m: m), title: appName + L(" 설정", " Settings")) { m.pair.stop(); onClose() }
+    let w = hostWindow(SetupView(m: m), title: appName + L(" 설정", " Settings")) { m.pair.stop(); m.stopNetwork(); onClose() }
     m.close = { [weak w] in w?.close() }
     return w
 }
@@ -808,6 +896,15 @@ func saveSnapshots(to dir: URL) {
         save(view, "setup-\(step.rawValue + 1).png")
     }
     save(PairWindowView(pair: PairModel(reviver: r), autoStart: false, close: {}), "pair-window.png")
+    // 로컬 네트워크 도우미 창 (시스템 설정 옆) — 밝게·어둡게, 기다리는 중 / 허용됨
+    for dark in [false, true] {
+        for allowed in [false, true] {
+            let hm = NetworkHelpModel()
+            hm.allowed = allowed
+            save(NetworkHelpView(m: hm).background(Color(nsColor: .windowBackgroundColor)).environment(\.colorScheme, dark ? .dark : .light),
+                 "network-help-\(allowed ? "allowed" : "waiting")-\(dark ? "dark" : "light").png", appearance: dark ? .darkAqua : .aqua)
+        }
+    }
 
     // 메뉴 막대 아이콘 (연결됨·끊김·다시 붙이는 중) — 밝은/어두운 메뉴 막대, 2배 크기
     for (name, appearance, bg) in [("menubar-light.png", NSAppearance.Name.aqua, NSColor(white: 0.93, alpha: 1)),

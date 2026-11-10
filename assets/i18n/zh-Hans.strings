@@ -266,8 +266,6 @@
 "Restart adb server (owned by app)" = "由应用重启 adb 服务器";
 /* ko: 앱이 adb 서버 재시작 (macOS mDNS 백엔드) */
 "Restart adb server (macOS mDNS backend)" = "由应用重启 adb 服务器 (macOS mDNS 后端)";
-/* ko: 터미널에서 서버 실행 */
-"Start server from Terminal" = "从“终端”启动服务器";
 /* ko: adb 버전 불일치 → 다른 adb(Android Studio 등)가 서버를 띄움 */
 "adb version mismatch → another adb (Android Studio, etc.) started the server" = "adb 版本不一致 → 其他 adb (Android Studio 等) 启动了服务器";
 /* ko: launchd(데몬, 띄운 프로그램 불명) */
@@ -294,8 +292,6 @@
 "Allow debugging on the phone (unauthorized)" = "需要在手机上允许调试 (unauthorized)";
 /* ko: 진단: 휴대폰 =  */
 "Diagnosis: phone = " = "诊断: 手机 = ";
-/* ko: 휴대폰은 보이지만 이 앱에서 접속 불가 → 로컬 네트워크 권한 또는 네트워크(VPN 등) 문제 */
-"Phone is visible but unreachable from this app → Local Network permission or network (VPN, etc.)" = "能看到手机，但本应用无法连接 → 本地网络权限或网络 (VPN 等) 问题";
 /* ko: 이 앱에 로컬 네트워크 권한 없음 → 시스템 설정 > 개인정보 보호 및 보안 > 로컬 네트워크에서 허용 */
 "This app has no Local Network permission → allow it in System Settings > Privacy & Security > Local Network" = "本应用没有本地网络权限 → 请在“系统设置 > 隐私与安全性 > 本地网络”中允许";
 /* ko: 휴대폰이 보이지 않음 → 무선 디버깅 꺼짐 / 화면 꺼짐·절전 / 다른 Wi‑Fi */
@@ -332,8 +328,6 @@
 "  Started app-owned server pid " = "  已启动应用所有的服务器 pid ";
 /* ko: 포트 안 열림 */
 "port not open" = "端口未打开";
-/* ko:   터미널 서버 소유:  */
-"  Terminal server owner: " = "  “终端”服务器所有者: ";
 /* ko: 확인 중… */
 "Checking…" = "正在检查…";
 /* ko: 로컬 네트워크 권한 열기 */
@@ -569,3 +563,57 @@
 "Connected for {0} h" = "已连接 {0} 小时";
 /* ko: {0}일째 연결 */
 "Connected for {0} d" = "已连接 {0} 天";
+
+/* 로컬 네트워크 권한 (1.4.1) */
+/* ko: 로컬 네트워크를 허용해 주세요 */
+"Allow Local Network access" = "请允许本地网络访问";
+/* ko: 같은 Wi‑Fi의 휴대폰을 찾는 데 필요해요 */
+"Needed to find your phone on Wi‑Fi" = "用于在 Wi‑Fi 上找到你的手机";
+/* ko: 시스템 설정 › 개인정보 보호 및 보안에서 '로컬 네트워크'를 누르세요 */
+"In System Settings › Privacy & Security, click 'Local Network'" = "在“系统设置 › 隐私与安全性”中点按“本地网络”";
+/* ko: 목록에서 이 앱의 스위치를 켜세요 */
+"Turn on the switch for this app" = "在列表中打开此 App 的开关";
+/* ko: 허용됐어요 — 다시 연결할게요 */
+"Allowed — reconnecting" = "已允许 — 正在重新连接";
+/* ko: 켜면 바로 알아채고 다시 연결해요 */
+"Reconnects as soon as you turn it on" = "打开后会立即重新连接";
+/* ko: 설정 다시 열기 */
+"Open Settings again" = "再次打开设置";
+/* ko: 로컬 네트워크 도우미 열기 */
+"Opened Local Network helper" = "已打开本地网络引导";
+/* ko: 로컬 네트워크 허용됨 */
+"Local Network allowed" = "本地网络已允许";
+/* ko: 네트워크 허용 */
+"Local Network" = "本地网络";
+/* ko: 1 / 4단계 */
+"Step 1 of 4" = "第 1 步，共 4 步";
+/* ko: 2 / 4단계 */
+"Step 2 of 4" = "第 2 步，共 4 步";
+/* ko: 3 / 4단계 */
+"Step 3 of 4" = "第 3 步，共 4 步";
+/* ko: 4 / 4단계 · 처음 한 번만 */
+"Step 4 of 4 · first time only" = "第 4 步，共 4 步 · 仅首次";
+/* ko: 같은 Wi‑Fi에 있는 휴대폰을 찾고 다시 붙이려면 macOS의 로컬 네트워크 권한이 필요해요. */
+"macOS Local Network permission is needed to find your phone on the same Wi‑Fi and reconnect it." = "需要 macOS 的本地网络权限，才能在同一 Wi‑Fi 中找到并重新连接手机。";
+/* ko: 허용되어 있어요 */
+"Allowed" = "已允许";
+/* ko: 아직 허용되지 않았어요 */
+"Not allowed yet" = "尚未允许";
+/* ko: macOS가 묻는 창이 떴다면 '허용'을 눌러 주세요. 창이 없었다면 전에 '허용 안 함'을 누른 거예요 — 시스템 설정에서 켜 주세요. */
+"If macOS asks, click 'Allow'. If nothing appeared, it was denied before — turn it on in System Settings." = "如果 macOS 弹出询问，请点按“允许”。如果没有出现，说明之前已拒绝 — 请在系统设置中打开。";
+/* ko: macOS가 묻는 창이 뜨면 '허용'을 눌러 주세요. */
+"If macOS asks, click 'Allow'." = "如果 macOS 弹出询问，请点按“允许”。";
+/* ko: 휴대폰과 주고받는 것은 adb 연결뿐이고, 같은 Wi‑Fi 밖으로는 나가지 않아요. */
+"Only the adb connection to your phone uses it, and it stays on your Wi‑Fi." = "仅用于与手机的 adb 连接，不会离开你的 Wi‑Fi。";
+/* ko: 나중에 하기 */
+"Later" = "稍后";
+/* ko: 시스템 설정에서 켜기 */
+"Turn on in System Settings" = "在系统设置中打开";
+/* ko: 휴대폰이 Wi‑Fi에 보이지만 응답하지 않음 → 휴대폰 화면을 켜거나 무선 디버깅을 껐다 켜 주세요 (VPN도 확인) */
+"Phone is visible on Wi‑Fi but not responding → wake the phone or turn wireless debugging off and on (check VPN too)" = "手机在 Wi‑Fi 上可见但没有响应 → 请唤醒手机，或关闭再打开无线调试(也请检查 VPN)";
+/* ko: 응용 프로그램 폴더 밖에서 실행 중 → 연결하지 않고 설치 단계를 엶:  */
+"Running outside Applications → not connecting, opening the install step: " = "在“应用程序”文件夹之外运行 → 不连接，打开安装步骤：";
+/* ko: 로컬 네트워크 확인:  */
+"Local Network check: " = "本地网络检查：";
+/* ko: 로컬 네트워크 허용 확인 → 권한 안내 지움 */
+"Local Network allowed → cleared the permission notice" = "已确认本地网络允许 → 已清除权限提示";

@@ -55,8 +55,8 @@ The usual fix is `adb kill-server`, start it again, look up the new IP:port, `ad
 | macOS | Windows |
 |---|---|
 | ![macOS setup — adb](docs/images/mac-en-setup-1.png) | ![Windows setup — adb](docs/images/windows-en-setup-1.png) |
-| ![macOS setup — QR pairing](docs/images/mac-en-setup-3.png) | ![Windows setup — QR pairing](docs/images/windows-en-setup-3.png) |
-| ![macOS setup — connected](docs/images/mac-en-setup-4.png) | ![Windows setup — connected](docs/images/windows-en-setup-4.png) |
+| ![macOS setup — QR pairing](docs/images/mac-en-setup-4.png) | ![Windows setup — QR pairing](docs/images/windows-en-setup-3.png) |
+| ![macOS setup — connected](docs/images/mac-en-setup-5.png) | ![Windows setup — connected](docs/images/windows-en-setup-4.png) |
 
 ## Install
 
@@ -65,7 +65,9 @@ Download from [**Releases**](../../releases/latest).
 ### macOS (13 Ventura or later)
 1. Unzip `WirelessADBReconnect-x.y.z-mac.zip` and open **Wireless ADB Reconnect**.
 2. Follow the wizard → **Install & continue** moves it to `/Applications` and relaunches.
-3. Allow **Local Network** when asked (needed to reach your phone).
+3. On the **Local Network** step, click **Allow** when macOS asks (needed to reach your phone).
+   - If you chose *Don't Allow* before, click **Turn on in System Settings**. A small guide opens next to Settings showing where the switch is, and the app reconnects as soon as you turn it on.
+   - The app uses the network only from the Applications folder — running it from another location would add a second entry for the same app to the permission list. Updates keep the same entry, and after uninstalling and reinstalling there is still only one.
 
 ### Windows (10 / 11, x64 or ARM64)
 1. Run `WirelessADBReconnect-x.y.z-windows.exe` (code-signed with an EV certificate, publisher **LaonCross Inc.**).
@@ -88,7 +90,8 @@ The app owns its adb server (`adb nodaemon server` as a child process), so the s
    | 2 | keep server, `adb connect <IP:port from mDNS>` | port / IP changed |
    | 3 | restart the app-owned server, wait for auto-connect, then connect | stale or foreign server, version mismatch |
    | 4 | restart with the other mDNS backend | adb's mDNS not finding the phone |
-   | 5 | *(macOS)* start the server from Terminal | app lacks Local Network permission |
+
+   *(macOS)* Without Local Network permission it doesn't try, and shows where to turn it on in System Settings.
 
 3. **Remember** the strategy that worked and try it first next time.
 4. **Tell you** — a notification with the result, or the most likely cause and what to do.
@@ -125,7 +128,7 @@ dotnet build windows\WirelessAdbReconnect\WirelessAdbReconnect.csproj -c Release
 ```
 
 ```
-mac/        Swift menu bar app (main.swift: diagnosis & strategies, Setup.swift: SwiftUI wizard & pairing, Mirror.swift: scrcpy mirroring, Panel.swift: menu bar panel)
+mac/        Swift menu bar app (main.swift: diagnosis & strategies, Setup.swift: SwiftUI wizard & pairing, Mirror.swift: scrcpy mirroring, Panel.swift: menu bar panel, Permission.swift: Local Network permission check & guide)
 windows/    C# tray app (Reviver.cs: diagnosis & strategies, WPF wizard & pairing, Mirror.cs: scrcpy mirroring)
 assets/     icons (regenerate all with ./assets/make_icons.sh)
 docs/       plan, troubleshooting, screenshots
