@@ -5,28 +5,39 @@ import AppKit
 import Combine
 import SwiftUI
 
-/// 패널에 보여 줄 휴대폰 정보 (연결될 때 한 번 휴대폰에 물어본다)
-struct PhoneInfo: Equatable {
-    var serial: String
+/// 패널의 휴대폰 한 줄
+struct PhoneRow: Equatable, Identifiable {
+    enum State: Equatable { case connected(since: Date), dropped, off }
+    let id: String
     var name: String
     var android: String?
     var addr: String?
-    var since: Date
+    var state: State
+    var mirroring: Bool
 }
 
-enum PanelAction { case mirror, reconnect, copyAddress, pair, diagnostics, permission, update, settings, quit, mirrorLog, optionsChanged }
+enum PanelAction {
+    case reconnectAll, restartAll, reconnect(String), setEnabled(String, Bool), forget(String), mirror(String), copyAddress(String)
+    case pair, mirrorOptions, diagnostics, permission, update, settings, quit
+}
 
 final class PanelModel: ObservableObject {
     @Published var link: LinkState = .working
     /// 다시 붙이는 중일 때 보여 줄 문구 (연결하는 중… / 미러링 준비 중…)
     @Published var status = ""
-    @Published var phone: PhoneInfo?
-    /// 끊겼을 때 보여 줄 마지막 기기 이름
-    @Published var lastName: String?
+    @Published var phones: [PhoneRow] = []
+    @Published var overall: Overall = .noPhones
+    @Published var connectedCount = 0
+    @Published var enabledCount = 0
+    /// 다른 기기 때문에 서버 재시작을 건너뛰고 실패했을 때 → 'adb 재시작하고 모두 다시 연결'
+    @Published var restartOffer = false
+    @Published var busyIds: Set<String> = []
+    @Published var allBusy = false
     @Published var mirroring = false
     @Published var needsPermission = false
     @Published var update: Updater.State = .unknown
-    @Published var showOptions = false
+    /// 펼친 휴대폰 행 (주소·목록에서 지우기)
+    @Published var expanded: String?
     @Published var now = Date()
     var appVersion = ""
     @Published var adbVersion: String?
@@ -35,11 +46,6 @@ final class PanelModel: ObservableObject {
 
     init(mirror: ScreenMirror) { self.mirror = mirror }
 
-    /// 미러링 옵션 (ScreenMirror의 UserDefaults를 그대로 쓴다)
-    func binding<T>(_ key: ReferenceWritableKeyPath<ScreenMirror, T>) -> Binding<T> {
-        Binding(get: { self.mirror[keyPath: key] },
-                set: { self.objectWillChange.send(); self.mirror[keyPath: key] = $0; self.act(.optionsChanged) })
-    }
 }
 
 // MARK: - 모양
@@ -139,7 +145,7 @@ struct PanelView: View {
     @ObservedObject var m: PanelModel
     /// 스냅샷: 반투명 재질 대신 단색 바탕
     var solid: Color? = nil
-    @State private var copied = false
+    @State private var copied: String?
 
     static let androidHead: NSImage? = {
         guard let img = statusMasks.body?.copy() as? NSImage else { return nil }
@@ -160,7 +166,7 @@ struct PanelView: View {
             header
             PanelDivider()
             deviceSection
-            if m.needsPermission || isUpdateShown {
+            if m.needsPermission || m.restartOffer || isUpdateShown {
                 PanelDivider()
                 notices
             }
@@ -168,6 +174,9 @@ struct PanelView: View {
             SectionTitle(text: L("도구", "Tools"))
             Button { m.act(.pair) } label: {
                 PanelRow(icon: RowIcon(symbol: "qrcode"), title: L("휴대폰 페어링", "Pair phone"), detail: L("QR 코드로 새 기기 추가", "Add a new device with a QR code")) { Image(systemName: "arrow.up.right") }
+            }.buttonStyle(RowButtonStyle())
+            Button { m.act(.mirrorOptions) } label: {
+                PanelRow(icon: RowIcon(symbol: "rectangle.on.rectangle"), title: L("미러링 옵션", "Mirroring options"), detail: mirroringDetail) { Image(systemName: "arrow.up.right") }
             }.buttonStyle(RowButtonStyle())
             Button { m.act(.diagnostics) } label: {
                 PanelRow(icon: RowIcon(symbol: "list.bullet.rectangle"), title: L("진단 보기", "Diagnostics"), detail: L("연결 기록과 원인", "Connection history and causes")) { Image(systemName: "arrow.up.right") }
@@ -181,7 +190,7 @@ struct PanelView: View {
         .background(solid ?? Color(nsColor: .windowBackgroundColor).opacity(0.72))
     }
 
-    // 이름 + 상태 점 / 주소 + 복사 · 오른쪽 링크
+    // 이름 + 상태 점 / 몇 대 연결됐는지 · 오른쪽 링크
     var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 3) {
@@ -189,30 +198,7 @@ struct PanelView: View {
                     Text(appName).font(.system(size: 13, weight: .semibold))
                     Circle().fill(dotColor).frame(width: 7, height: 7)
                 }
-                HStack(spacing: 5) {
-                    switch m.link {
-                    case .connected:
-                        if let a = m.phone?.addr {
-                            Text(a).font(.system(size: 12).monospacedDigit()).foregroundColor(.secondary).textSelection(.enabled)
-                            Button {
-                                m.act(.copyAddress)
-                                copied = true
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
-                            } label: {
-                                Image(systemName: copied ? "checkmark" : "doc.on.doc").font(.system(size: 10.5)).foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                            .help(L("주소 복사", "Copy address"))
-                            .accessibilityLabel(L("주소 복사", "Copy address"))
-                        } else {
-                            Text(L("무선으로 연결됨", "Connected wirelessly")).font(.system(size: 12)).foregroundColor(.secondary)
-                        }
-                    case .working:
-                        Text(m.status).font(.system(size: 12)).foregroundColor(.secondary)
-                    case .disconnected:
-                        Text(L("연결 끊김", "Disconnected")).font(.system(size: 12)).foregroundColor(.secondary)
-                    }
-                }
+                Text(statusLine).font(.system(size: 12)).foregroundColor(.secondary)
             }
             Spacer()
             headerLink.padding(.top, 15)
@@ -220,14 +206,17 @@ struct PanelView: View {
         .padding(.horizontal, 8)
     }
 
+    var statusLine: String {
+        if m.link == .working { return m.status }
+        if m.overall == .noPhones { return L("연결 끊김", "Disconnected") }
+        return L("{0}/{1}대 연결됨", "{0} of {1} connected", m.connectedCount, m.enabledCount)
+    }
+
     @ViewBuilder var headerLink: some View {
-        switch m.link {
-        case .connected:
-            link(m.mirroring ? L("미러링 중지", "Stop mirroring") : L("화면 미러링", "Screen mirroring"), .mirror)
-        case .disconnected:
-            link(L("다시 연결", "Reconnect"), .reconnect)
-        case .working:
+        if m.allBusy {
             ProgressView().controlSize(.small).scaleEffect(0.7).frame(width: 16, height: 16)
+        } else if m.link != .working && m.overall != .allConnected {
+            link(L("다시 연결", "Reconnect"), .reconnectAll)
         }
     }
 
@@ -235,22 +224,12 @@ struct PanelView: View {
         Button(title) { m.act(a) }.buttonStyle(.plain).font(.system(size: 13)).foregroundColor(Color(nsColor: .linkColor))
     }
 
-    // 연결된 기기 (› 를 누르면 미러링 옵션), 끊겼으면 다시 연결 행
+    // 휴대폰마다 한 줄: 누르면 펼침(끊겼으면 다시 연결) · 미러링 · 켜기/끄기 · ›
     @ViewBuilder var deviceSection: some View {
-        if m.link == .connected, let p = m.phone {
-            SectionTitle(text: L("연결된 기기", "Connected device"))
-            Button { withAnimation(.easeOut(duration: 0.15)) { m.showOptions.toggle() } } label: {
-                PanelRow(icon: RowIcon(image: Self.androidHead), title: p.name, badge: p.android.map { "Android \($0)" },
-                         detail: (m.mirroring ? L("미러링 중", "Mirroring") + " · " : "") + sinceText(p.since)) {
-                    Image(systemName: "chevron.right").rotationEffect(.degrees(m.showOptions ? 90 : 0))
-                }
-            }
-            .buttonStyle(RowButtonStyle())
-            if m.showOptions { options }
-        } else {
-            SectionTitle(text: L("기기", "Device"))
-            Button { m.act(.reconnect) } label: {
-                PanelRow(icon: RowIcon(image: Self.androidHead, tint: .secondary), title: m.lastName ?? L("휴대폰", "Phone"),
+        SectionTitle(text: L("기기", "Devices"))
+        if m.phones.isEmpty {
+            Button { m.act(.reconnectAll) } label: {
+                PanelRow(icon: RowIcon(image: Self.androidHead, tint: .secondary), title: L("휴대폰", "Phone"),
                          detail: m.link == .working ? m.status : L("연결 끊김 · 눌러서 다시 연결", "Disconnected · click to reconnect")) {
                     if m.link == .working { ProgressView().controlSize(.small).scaleEffect(0.6).frame(width: 14, height: 14) }
                     else { Image(systemName: "arrow.clockwise") }
@@ -259,34 +238,100 @@ struct PanelView: View {
             .buttonStyle(RowButtonStyle())
             .disabled(m.link == .working)
         }
+        ForEach(m.phones) { row in
+            phoneRow(row)
+            if m.expanded == row.id { expandedArea(row) }
+        }
     }
 
-    // 미러링 옵션 (펼침)
-    var options: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Picker("", selection: m.binding(\.quality)) {
-                ForEach(MirrorQuality.allCases, id: \.self) { Text($0.shortTitle).tag($0) }
+    func isBusy(_ row: PhoneRow) -> Bool { m.busyIds.contains(row.id) || (m.allBusy && row.state == .dropped) }
+
+    func phoneRow(_ row: PhoneRow) -> some View {
+        let busy = isBusy(row)
+        let off = row.state == .off
+        return HStack(spacing: 4) {
+            Button {
+                if row.state == .dropped && !busy { m.act(.reconnect(row.id)) } else { toggleExpanded(row.id) }
+            } label: {
+                PanelRow(icon: RowIcon(image: Self.androidHead, tint: row.state == .dropped || off ? .secondary : .primary),
+                         title: row.name, badge: row.android.map { "Android \($0)" }, detail: detail(row, busy: busy)) { EmptyView() }
             }
-            .pickerStyle(.segmented).labelsHidden().controlSize(.small).frame(maxWidth: .infinity)
-            optionToggle(L("소리도 전송", "Forward audio"), \.audio)
-            optionToggle(L("창을 항상 위에", "Window always on top"), \.alwaysOnTop)
-            optionToggle(L("미러링 중 폰 화면 끄기", "Turn phone screen off"), \.turnScreenOff)
-            optionToggle(L("동영상으로 녹화 (Movies 폴더)", "Record to Movies folder"), \.record)
+            .buttonStyle(RowButtonStyle())
+            .opacity(off ? 0.6 : 1)
+            Group {
+                if case .connected = row.state {
+                    Button { m.act(.mirror(row.id)) } label: {
+                        Image(systemName: row.mirroring ? "stop.fill" : "rectangle.on.rectangle").font(.system(size: 12))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(m.mirroring && !row.mirroring)
+                    .help(row.mirroring ? L("화면 미러링 중지", "Stop screen mirroring") : L("화면 미러링", "Screen mirroring"))
+                } else if row.state == .dropped {
+                    if busy { ProgressView().controlSize(.small).scaleEffect(0.6).frame(width: 14, height: 14) }
+                    else {
+                        Button { m.act(.reconnect(row.id)) } label: { Image(systemName: "arrow.clockwise").font(.system(size: 11, weight: .semibold)) }
+                            .buttonStyle(.plain).help(L("다시 연결", "Reconnect"))
+                    }
+                }
+                Toggle(L("연결 유지", "Keep connected"), isOn: Binding(get: { !off }, set: { m.act(.setEnabled(row.id, $0)) }))
+                    .labelsHidden().toggleStyle(.switch).controlSize(.mini)
+                    .help(L("연결 유지", "Keep connected"))
+                Button { toggleExpanded(row.id) } label: {
+                    Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
+                        .rotationEffect(.degrees(m.expanded == row.id ? 90 : 0))
+                }
+                .buttonStyle(.plain)
+            }
+            .foregroundColor(.secondary)
+        }
+        .padding(.trailing, 8)
+    }
+
+    func toggleExpanded(_ id: String) {
+        withAnimation(.easeOut(duration: 0.15)) { m.expanded = m.expanded == id ? nil : id }
+    }
+
+    func detail(_ row: PhoneRow, busy: Bool) -> String {
+        switch row.state {
+        case .connected(let since):
+            return row.mirroring ? L("미러링 중", "Mirroring") : sinceText(since)
+        case .dropped:
+            return busy ? L("연결하는 중…", "Connecting…") : L("연결 끊김", "Disconnected")
+        case .off:
+            return busy ? L("끊는 중…", "Disconnecting…") : L("꺼 둠", "Off")
+        }
+    }
+
+    // 펼침: 주소 복사(연결됐을 때) · 목록에서 지우기
+    func expandedArea(_ row: PhoneRow) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            if case .connected = row.state, let a = row.addr {
+                HStack(spacing: 5) {
+                    Text(a).font(.system(size: 12).monospacedDigit()).foregroundColor(.secondary).textSelection(.enabled)
+                    Button {
+                        m.act(.copyAddress(row.id))
+                        copied = row.id
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = nil }
+                    } label: {
+                        Image(systemName: copied == row.id ? "checkmark" : "doc.on.doc").font(.system(size: 10.5)).foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(L("주소 복사", "Copy address"))
+                    .accessibilityLabel(L("주소 복사", "Copy address"))
+                }
+            }
             HStack {
-                Text(L("옵션은 다음 미러링부터 적용돼요", "Options apply to the next mirroring session")).font(.system(size: 10.5)).foregroundColor(.secondary)
                 Spacer()
-                Button(L("미러링 로그", "Mirroring log")) { m.act(.mirrorLog) }.buttonStyle(.plain).font(.system(size: 10.5)).foregroundColor(Color(nsColor: .linkColor))
+                Button(L("목록에서 지우기", "Forget")) { m.expanded = nil; m.act(.forget(row.id)) }
+                    .buttonStyle(.plain).font(.system(size: 10.5)).foregroundColor(Color(nsColor: .linkColor))
             }
         }
         .padding(.leading, 46).padding(.trailing, 10).padding(.top, 2).padding(.bottom, 4)
     }
 
-    func optionToggle(_ title: String, _ key: ReferenceWritableKeyPath<ScreenMirror, Bool>) -> some View {
-        HStack {
-            Text(title).font(.system(size: 12))
-            Spacer()
-            Toggle(title, isOn: m.binding(key)).labelsHidden().toggleStyle(.switch).controlSize(.mini)
-        }
+    var mirroringDetail: String {
+        if let name = m.phones.first(where: \.mirroring)?.name { return L("{0} 미러링 중", "Mirroring {0}", name) }
+        return L("화질: {0}", "Quality: {0}", m.mirror.quality.shortTitle)
     }
 
     var isUpdateShown: Bool {
@@ -296,8 +341,15 @@ struct PanelView: View {
         }
     }
 
-    // 필요할 때만: 로컬 네트워크 권한, 업데이트
+    // 필요할 때만: adb 재시작 제안, 로컬 네트워크 권한, 업데이트
     @ViewBuilder var notices: some View {
+        if m.restartOffer {
+            Button { m.act(.restartAll) } label: {
+                PanelRow(icon: RowIcon(symbol: "arrow.triangle.2.circlepath", tint: Color(hex: 0xE8890C)), title: L("adb 재시작하고 모두 다시 연결", "Restart adb and reconnect all"),
+                         detail: L("다른 휴대폰도 잠깐 끊겨요", "Other phones drop briefly")) { Image(systemName: "arrow.clockwise") }
+            }.buttonStyle(RowButtonStyle())
+            .disabled(m.allBusy)
+        }
         if m.needsPermission {
             Button { m.act(.permission) } label: {
                 PanelRow(icon: RowIcon(symbol: "exclamationmark.triangle.fill", tint: Color(hex: 0xE8890C)), title: L("로컬 네트워크 권한이 필요해요", "Local Network permission needed"),

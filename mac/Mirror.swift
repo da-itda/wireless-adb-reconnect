@@ -25,7 +25,13 @@ enum MirrorQuality: String, CaseIterable {
 }
 
 final class ScreenMirror {
-    private(set) var process: Process?
+    /// 미러링은 작업 줄에서 시작하고 main에서 읽는다
+    private let lock = NSLock()
+    private var _process: Process?
+    private var _phoneId: String?
+    var process: Process? { lock.lock(); defer { lock.unlock() }; return _process }
+    /// 미러링 중인 휴대폰 (ro.serialno)
+    var phoneId: String? { lock.lock(); defer { lock.unlock() }; return _phoneId }
     private var stoppedByUser = false
     private let defaults = UserDefaults.standard
     /// scrcpy가 끝났을 때 (코드, 사용자가 중지한 것인지)
@@ -88,7 +94,7 @@ final class ScreenMirror {
     // MARK: 실행 · 중지
 
     /// 무선 기기(serial)로 scrcpy를 띄운다. adb는 앱이 찾은 것을 그대로 쓴다.
-    func start(adb: String, serial: String, title: String) -> (ok: Bool, message: String) {
+    func start(adb: String, serial: String, title: String, phoneId: String) -> (ok: Bool, message: String) {
         guard let scrcpy = ScreenMirror.findScrcpy() else {
             return (false, L("scrcpy가 설치되어 있지 않아요. 설정 창에서 '화면 미러링도 설치'를 켜 주세요.", "scrcpy is not installed. Turn on 'Also install screen mirroring' in Settings."))
         }
@@ -130,13 +136,16 @@ final class ScreenMirror {
             let code = proc.terminationStatus
             log(L("  미러링 종료, 코드 ", "  Mirroring ended, code ") + "\(code)" + (self.stoppedByUser ? L(" (사용자 중지)", " (stopped by user)") : ""))
             let byUser = self.stoppedByUser
-            DispatchQueue.main.async { self.onExit(code, byUser) }
+            DispatchQueue.main.async {
+                self.lock.lock(); if self._process === proc { self._phoneId = nil }; self.lock.unlock()
+                self.onExit(code, byUser)
+            }
         }
         do { try p.run() } catch {
             log(L("  scrcpy 실행 실패: ", "  Failed to start scrcpy: ") + "\(error)")
             return (false, L("scrcpy를 실행하지 못했어요: ", "Couldn't start scrcpy: ") + error.localizedDescription)
         }
-        process = p
+        lock.lock(); _process = p; _phoneId = phoneId; lock.unlock()
         log(L("▶ 미러링 시작 pid ", "▶ Mirroring started pid ") + "\(p.processIdentifier) · \(serial) · \(scrcpy) · ADB=\(adb)")
         return (true, "")
     }
