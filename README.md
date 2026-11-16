@@ -35,8 +35,9 @@ The usual fix is `adb kill-server`, start it again, look up the new IP:port, `ad
 
 - **One click to reconnect** — *Reconnect* in the menu bar panel (macOS) or a click on the tray icon (Windows), or just open the app again.
 - **Status at a glance** — the menu bar / tray icon shows ⚪ gray waves when connected, 🔴 red waves when disconnected (gray stays readable on both light and dark menu bars and taskbars).
-- **Menu bar panel (macOS)** — click the icon for a card-style panel: status and the phone's IP:port (one-click copy), the connected phone's name and Android version, *Screen mirroring* with its options, *Pair phone* and *Diagnostics*. Right-click (or Control-click) the icon for the full menu with shortcuts.
+- **Menu bar panel (macOS)** — click the icon for a card-style panel: every phone with its name, Android version and status; expand a phone for its IP:port (one-click copy) and *Forget*; plus *Pair phone*, *Mirroring options* (a window: quality, audio, always on top, screen off, record) and *Diagnostics*. Right-click (or Control-click) the icon for the full menu with shortcuts.
 - **Diagnoses the cause** — who owns the adb server, Local Network permission (macOS), phone visible over mDNS, current IP:port, `offline` / `unauthorized` devices, adb version conflicts, Public network profile (Windows), pairing lost.
+- **Several phones (macOS)** — each phone has its own *Keep connected* switch, reconnect button and mirror button. Switching a phone off disconnects it and keeps it off. Reconnecting one phone never restarts the adb server while another device is connected — if that's the only fix left, the app offers *Restart adb and reconnect all* for you to press. One phone is mirrored at a time.
 - **Tries fixes in order, learns** — stops at the first one that works and tries it first next time.
 - **QR pairing** like Android Studio, plus pairing-code fallback. Retries automatically if the phone's IP changes mid-pairing.
 - **Screen mirroring** — *Start screen mirroring* (macOS ⌘M, Windows tray menu or `WirelessADBReconnect.exe --mirror`) shows and controls your phone on the computer via [scrcpy](https://github.com/Genymobile/scrcpy). It reuses the wireless connection and adb server the app keeps alive, so scrcpy never kills the server. If the phone is disconnected it reconnects first. Options: quality, audio, always on top, turn phone screen off, record.
@@ -92,6 +93,7 @@ The app owns its adb server (`adb nodaemon server` as a child process), so the s
    | 4 | restart with the other mDNS backend | adb's mDNS not finding the phone |
 
    *(macOS)* Without Local Network permission it doesn't try, and shows where to turn it on in System Settings.
+   *(macOS)* Strategies 3 and 4 are skipped while another device is connected, so fixing one phone never drops another; the app offers *Restart adb and reconnect all* instead.
 
 3. **Remember** the strategy that worked and try it first next time.
 4. **Tell you** — a notification with the result, or the most likely cause and what to do.

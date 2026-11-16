@@ -97,7 +97,8 @@ enum AppInstall {
 // MARK: - 페어링 (QR · 코드)
 
 final class PairModel: ObservableObject {
-    enum Kind { case waiting, working, success, error }
+    /// confirm: adb를 다시 띄워야 해서 연결된 다른 기기가 잠깐 끊긴다 — 계속할지 묻는 중
+    enum Kind { case waiting, working, success, error, confirm }
     @Published var status = L("adb 서버 준비 중…", "Preparing adb server…")
     @Published var kind = Kind.working
     @Published var codeMode = false
@@ -108,11 +109,18 @@ final class PairModel: ObservableObject {
     let password = PairModel.random(10)
     let qr: NSImage
     var onPaired: () -> Void = {}
+    /// 페어링해서 연결된 휴대폰 (ro.serialno)
+    @Published var pairedId: String?
     private var cancelled = false
     private var started = false
+    /// 창을 열 때 이미 목록에 있던 휴대폰 — 이 휴대폰들이 붙은 것은 '페어링됨'으로 치지 않는다
+    private let knownAtOpen: Set<String>
+    private let confirmSem = DispatchSemaphore(value: 0)
+    private var confirmed = false
 
     init(reviver: Reviver) {
         self.reviver = reviver
+        knownAtOpen = Set(reviver.store.all.map(\.id))
         qr = PairModel.qrImage("WIFI:T:ADB;S:\(name);P:\(password);;")
     }
 
@@ -122,22 +130,57 @@ final class PairModel: ObservableObject {
         DispatchQueue.global().async { self.watchQR() }
     }
 
-    func stop() { cancelled = true }
+    func stop() { cancelled = true; confirmSem.signal() }
+
+    /// 'adb를 다시 시작해도 될까요?'에서 계속
+    func confirmRestart() { confirmed = true; confirmSem.signal() }
+
+    private let prepareLock = NSLock()
+
+    /// 앱이 서버를 소유하지 않는데 다른 기기가 연결돼 있으면, 서버를 다시 띄우기 전에 묻는다 (false = 멈춤)
+    private func prepareServer() -> Bool {
+        prepareLock.lock(); defer { prepareLock.unlock() }    // QR 대기와 코드 입력이 함께 묻지 않게
+        guard !cancelled else { return false }
+        switch reviver.prepareForPairing() {
+        case .ready: return true
+        case .failed:
+            set(L("adb를 찾을 수 없어요. 설정에서 adb를 설치해 주세요.", "adb not found. Install it from Settings."), .error); return false
+        case .needsConfirm(let names):
+            if confirmed { break }
+            let who = names.isEmpty ? L("연결된 기기", "Connected devices") : names.joined(separator: ", ")
+            set(L("페어링하려면 adb를 다시 시작해야 해요. {0}이(가) 잠깐 끊겼다가 다시 연결돼요.", "Pairing needs to restart adb. {0} will disconnect briefly and reconnect.", who), .confirm)
+            confirmSem.wait()
+            guard confirmed, !cancelled else { return false }
+        }
+        set(L("adb 다시 시작하는 중…", "Restarting adb…"), .working)
+        _ = reviver.restartAndReconnectAll()
+        return true
+    }
+
+    /// 창을 연 뒤 새로 붙은 휴대폰 (id를 알면 그 휴대폰만)
+    private func newlyConnected(_ id: String?) -> String? {
+        newlyConnectedPhone(connected: reviver.connectedIds(), knownAtOpen: knownAtOpen, forgotten: reviver.forgottenIds, target: id)
+    }
+
+    private func paired(_ id: String) {
+        reviver.store.setEnabled(id, true)
+        DispatchQueue.main.async { self.pairedId = id; self.onPaired() }
+    }
 
     private func set(_ s: String, _ k: Kind) {
         DispatchQueue.main.async { self.status = s; self.kind = k }
     }
 
     private func watchQR() {
-        guard reviver.ensureServer() else { set(L("adb를 찾을 수 없어요. 설정에서 adb를 설치해 주세요.", "adb not found. Install it from Settings."), .error); return }
+        guard prepareServer() else { return }
         set(L("휴대폰을 기다리는 중… QR을 찍으면 자동으로 연결돼요", "Waiting for your phone… it connects as soon as you scan the QR"), .waiting)
         let deadline = Date().addingTimeInterval(300)
         var lastTried: String?
         while !cancelled && Date() < deadline {
-            // 이미 페어링된 휴대폰이 그 사이 붙었으면(다시 붙이기 루틴 등) 페어링할 필요 없음
-            if reviver.connected() != nil {
+            // 목록에 없던 휴대폰이 그 사이 붙었으면(이미 페어링돼 있던 휴대폰) 페어링할 필요 없음
+            if let id = newlyConnected(nil) {
                 set(L("이미 페어링되어 있어서 연결됐어요", "Already paired — connected"), .success)
-                DispatchQueue.main.async { self.onPaired() }
+                paired(id)
                 return
             }
             // 페어링 중에 휴대폰 IP가 바뀌면 옛 주소가 남아 있을 수 있다 → 접속되는 주소가 보일 때까지 기다렸다 다시 시도
@@ -161,25 +204,40 @@ final class PairModel: ObservableObject {
     func pairWithCode() {
         let a = addr.trimmingCharacters(in: .whitespaces), c = code.trimmingCharacters(in: .whitespaces)
         guard !a.isEmpty, !c.isEmpty else { set(L("IP 주소:포트와 코드를 입력해 주세요.", "Enter the IP address:port and the code."), .error); return }
-        DispatchQueue.global().async { _ = self.reviver.ensureServer(); _ = self.pair(a, c) }
+        DispatchQueue.global().async { if self.prepareServer() { _ = self.pair(a, c) } }
     }
 
     @discardableResult
     private func pair(_ addr: String, _ secret: String) -> Bool {
-        guard let adb = reviver.adb else { return false }
         set(L("페어링 중… ", "Pairing… ") + addr, .working)
-        let out = run(adb, ["pair", addr, secret], timeout: 30).out
+        let out = reviver.adbIfRunning(["pair", addr, secret], timeout: 30)?.out ?? ""
         log(L("페어링 ", "Pairing ") + "\(addr): \(out)")
         guard out.contains("Successfully paired") else { set(L("페어링 실패: ", "Pairing failed: ") + out, .error); return false }
         set(L("페어링 완료! 연결하는 중…", "Paired! Connecting…"), .working)
-        var ok = waitUntil(15) { self.reviver.connected() != nil }
-        if !ok, let a = reviver.mdnsServices().first(where: { $0.type.hasPrefix("_adb-tls-connect") })?.addr {
-            run(adb, ["connect", a], timeout: 12)
-            ok = waitUntil(5) { self.reviver.connected() != nil }
+        // 어느 휴대폰인지는 출력의 guid로 안다 (못 읽으면 창을 연 뒤 새로 붙은 휴대폰)
+        let id = pairedPhoneId(fromPairOutput: out)
+        if let id {
+            reviver.unforget(id)
+            if reviver.store.phone(id) != nil { reviver.store.setEnabled(id, true) }
         }
-        if ok {
+        // 앱의 adb 서버는 저절로 붙지 않는다 → 휴대폰이 알리는 연결 주소로 직접 붙인다
+        func connectAddr() -> String? {
+            if let a = reviver.mdnsServices().first(where: { $0.type.hasPrefix("_adb-tls-connect") && (id == nil || phoneId(fromMdnsName: $0.name) == id) })?.addr { return a }
+            if let id, case .found(let a) = findPhone(id: id, timeout: 4) { return a }
+            return nil
+        }
+        var ok = false
+        for _ in 0..<5 where !ok && !cancelled {
+            if let a = connectAddr() {
+                log(L("페어링 후 연결 ", "Connecting after pairing ") + a + ": " + (reviver.adbIfRunning(["connect", a], timeout: 12)?.out ?? ""))
+                ok = waitUntil(5) { self.newlyConnected(id) != nil }
+            } else {
+                Thread.sleep(forTimeInterval: 2)
+            }
+        }
+        if ok, let got = newlyConnected(id) {
             set(L("연결됐어요", "Connected"), .success)
-            DispatchQueue.main.async { self.onPaired() }
+            paired(got)
         } else {
             set(L("페어링은 됐지만 아직 연결되지 않았어요. 메뉴 막대에서 '기기 다시 연결하기'를 눌러 주세요.", "Paired, but not connected yet. Choose 'Reconnect device' in the menu bar."), .error)
         }
@@ -217,12 +275,13 @@ final class SetupModel: ObservableObject {
     @Published var wantMirror = false
     let hasScrcpy = ScreenMirror.isInstalled
     let hasBrew = ScreenMirror.brewPath() != nil
-    @Published var device: Device?
+    /// 완료 화면에 보여 줄 연결된 휴대폰 (nil = 연결 안 됨)
+    @Published var phone: KnownPhone?
     /// ③ 로컬 네트워크 권한 (단계에 있는 동안 2초마다 확인)
     @Published var network: LocalNetwork.Status = LocalNetwork.last
     private var networkTimer: Timer?
     /// 완료 화면에 보여 줄 IP (스냅샷에서는 예시 주소)
-    var shownIP: String?
+    var shownIP: String? { isPreview ? "192.168.0.10" : phone?.lastAddr?.split(separator: ":").first.map(String.init) }
     let reviver: Reviver
     let pair: PairModel
     var onAdbReady: () -> Void = {}
@@ -231,12 +290,11 @@ final class SetupModel: ObservableObject {
     /// 스냅샷용 (네트워크 확인 등 실제 동작은 하지 않음)
     let isPreview: Bool
 
-    init(reviver: Reviver, connected: Device? = nil, preview: Step? = nil, startAt: Step? = nil) {
+    init(reviver: Reviver, connected: KnownPhone? = nil, preview: Step? = nil, startAt: Step? = nil) {
         self.reviver = reviver
         isPreview = preview != nil
         pair = PairModel(reviver: reviver)
-        shownIP = preview == nil ? reviver.lastAddr?.split(separator: ":").first.map(String.init) : "192.168.0.10"
-        device = connected ?? (preview == nil ? reviver.connected() : nil)
+        phone = connected
         wantLogin = AppInstall.loginItemEnabled || !UserDefaults.standard.bool(forKey: "setupShown") || UserDefaults.standard.bool(forKey: "wantLogin")
         if reviver.adb != nil { skipped.insert(.adb) }
         // 설치 단계: 응용 프로그램 폴더에 있어도 scrcpy가 없고 아직 묻지 않았으면 보여 준다 ('미러링도 설치' 스위치)
@@ -245,13 +303,29 @@ final class SetupModel: ObservableObject {
         wantMirror = hasScrcpy || (hasBrew && !mirrorDeclined)
         if LocalNetwork.last == .allowed { skipped.insert(.network) }
         // 이미 연결됐거나, 이 Mac에서 무선으로 붙은 적이 있으면(=페어링됨) 페어링 단계는 건너뜀
-        if device != nil || (preview == nil && reviver.winner != nil) { skipped.insert(.pair) }
+        if phone != nil || (preview == nil && (!reviver.store.all.isEmpty || reviver.store.legacyWinner != nil)) { skipped.insert(.pair) }
         if let startAt { skipped.remove(startAt) }
+        if preview == nil {
+            // adb에 물어보는 데 몇 초 걸릴 수 있어 창을 먼저 띄운다
+            DispatchQueue.global().async { [weak self] in
+                guard let self else { return }
+                let p = SetupModel.connectedPhone(self.reviver, preferring: nil)
+                DispatchQueue.main.async { if self.phone == nil { self.phone = p } }
+            }
+        }
         step = preview ?? startAt ?? Step.allCases.first { $0 != .done && !skipped.contains($0) } ?? .done
         pair.onPaired = { [weak self] in
-            self?.device = self?.reviver.connected()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { self?.step = .done }
+            guard let self else { return }
+            self.phone = self.pair.pairedId.flatMap(self.reviver.store.phone)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { self.step = .done }
         }
+    }
+
+    /// 연결된 휴대폰 — 방금 페어링한 휴대폰이 있으면 그것, 없으면 목록에서 연결된 첫 휴대폰
+    static func connectedPhone(_ reviver: Reviver, preferring id: String?) -> KnownPhone? {
+        let ids = reviver.connectedIds()
+        let target = id.flatMap { ids.contains($0) ? $0 : nil } ?? reviver.store.all.first { ids.contains($0.id) }?.id
+        return target.flatMap(reviver.store.phone)
     }
 
     func next() {
@@ -259,7 +333,13 @@ final class SetupModel: ObservableObject {
         var i = all.firstIndex(of: step)! + 1
         while i < all.count - 1 && skipped.contains(all[i]) { i += 1 }
         step = all[min(i, all.count - 1)]
-        if step == .done { DispatchQueue.global().async { let d = self.reviver.connected(); DispatchQueue.main.async { self.device = d } } }
+        if step == .done {
+            let paired = pair.pairedId
+            DispatchQueue.global().async {
+                let p = SetupModel.connectedPhone(self.reviver, preferring: paired)
+                DispatchQueue.main.async { self.phone = p }
+            }
+        }
     }
 
     func back() {
@@ -716,10 +796,14 @@ struct PairContent: View {
                 case .working: ProgressView().controlSize(.small)
                 case .success: Image(systemName: "checkmark.circle.fill").foregroundColor(.brandText)
                 case .error: Image(systemName: "exclamationmark.circle.fill").foregroundColor(.danger)
+                case .confirm: Image(systemName: "exclamationmark.triangle.fill").foregroundColor(Color(hex: 0xE8890C))
                 }
                 Text(pair.status).font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
                     .foregroundColor(pair.kind == .error ? .danger : Color(hex: 0x0F5132))
                 Spacer(minLength: 0)
+                if pair.kind == .confirm {
+                    Button(L("계속", "Continue")) { pair.confirmRestart() }.buttonStyle(OutlineButton())
+                }
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
             .background(RoundedRectangle(cornerRadius: 10).fill(pair.kind == .error ? Color(hex: 0xFDF1F1) : .mint))
@@ -767,27 +851,27 @@ struct DoneStep: View {
         VStack(spacing: 18) {
             ZStack {
                 Circle().fill(Color.mint2).frame(width: 72, height: 72)
-                Circle().fill(m.device != nil ? Color.brand : Color(hex: 0xF4B740)).frame(width: 52, height: 52)
-                Image(systemName: m.device != nil ? "checkmark" : "wifi").font(.system(size: 22, weight: .heavy)).foregroundColor(.onBrand)
+                Circle().fill(m.phone != nil ? Color.brand : Color(hex: 0xF4B740)).frame(width: 52, height: 52)
+                Image(systemName: m.phone != nil ? "checkmark" : "wifi").font(.system(size: 22, weight: .heavy)).foregroundColor(.onBrand)
             }.padding(.top, 8)
             VStack(spacing: 6) {
-                Text(m.device != nil ? L("연결됐어요", "Connected") : L("준비됐어요", "All set")).font(.system(size: 24, weight: .bold))
-                Text(m.device != nil ? L("이제 무선 연결이 끊기면 원인을 찾아 다시 붙여요.", "From now on, when wireless debugging drops it finds the cause and reconnects.")
+                Text(m.phone != nil ? L("연결됐어요", "Connected") : L("준비됐어요", "All set")).font(.system(size: 24, weight: .bold))
+                Text(m.phone != nil ? L("이제 무선 연결이 끊기면 원인을 찾아 다시 붙여요.", "From now on, when wireless debugging drops it finds the cause and reconnects.")
                                      : L("휴대폰에서 무선 디버깅을 켜면 알아서 연결해요.", "Turn on Wireless debugging on your phone and it connects automatically."))
                     .font(.system(size: 13)).foregroundColor(.muted)
             }
             HStack(spacing: 14) {
                 Image(systemName: "candybarphone").font(.system(size: 24)).foregroundColor(.ink2).frame(width: 34)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(m.device?.model ?? L("휴대폰", "Phone")).font(.system(size: 14, weight: .semibold))
-                    Text(m.device != nil ? L("무선", "Wireless") + (m.shownIP.map { " · " + $0 } ?? "") : L("아직 연결 안 됨", "Not connected yet"))
+                    Text(m.phone?.name ?? L("휴대폰", "Phone")).font(.system(size: 14, weight: .semibold))
+                    Text(m.phone != nil ? L("무선", "Wireless") + (m.shownIP.map { " · " + $0 } ?? "") : L("아직 연결 안 됨", "Not connected yet"))
                         .font(.system(size: 12)).foregroundColor(.muted)
                 }
                 Spacer()
                 HStack(spacing: 6) {
-                    Circle().fill(m.device != nil ? Color.brand : Color.danger).frame(width: 8, height: 8)
-                    Text(m.device != nil ? L("연결됨", "Connected") : L("끊김", "Disconnected")).font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(m.device != nil ? .brandText : .danger)
+                    Circle().fill(m.phone != nil ? Color.brand : Color.danger).frame(width: 8, height: 8)
+                    Text(m.phone != nil ? L("연결됨", "Connected") : L("끊김", "Disconnected")).font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(m.phone != nil ? .brandText : .danger)
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 14)
@@ -835,6 +919,108 @@ struct PairWindowView: View {
     }
 }
 
+// MARK: - 미러링 옵션 창
+
+/// ScreenMirror의 설정(UserDefaults)을 그대로 쓴다. 바꾸면 onChange (패널의 '화질: …'을 다시 그림)
+final class MirrorOptionsModel: ObservableObject {
+    let mirror: ScreenMirror
+    var onChange: () -> Void = {}
+    var openLog: () -> Void = {}
+    var openSetup: () -> Void = {}
+    let hasScrcpy = ScreenMirror.isInstalled
+
+    init(mirror: ScreenMirror) { self.mirror = mirror }
+
+    func binding<T>(_ key: ReferenceWritableKeyPath<ScreenMirror, T>) -> Binding<T> {
+        Binding(get: { self.mirror[keyPath: key] },
+                set: { self.objectWillChange.send(); self.mirror[keyPath: key] = $0; self.onChange() })
+    }
+}
+
+struct MirrorOptionsView: View {
+    @ObservedObject var m: MirrorOptionsModel
+    let close: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            StepHeader(eyebrow: L("화면 미러링 · scrcpy", "Screen mirroring · scrcpy"), title: L("미러링 옵션", "Mirroring options"),
+                       desc: L("모든 휴대폰에 같이 쓰이고, 다음 미러링부터 적용돼요.", "Used for every phone. Changes apply the next time you start mirroring."))
+            if !m.hasScrcpy {
+                HStack(spacing: 10) {
+                    Image(systemName: "exclamationmark.circle.fill").foregroundColor(.danger)
+                    Text(L("scrcpy가 설치되어 있지 않아요", "scrcpy is not installed")).font(.system(size: 13))
+                    Spacer(minLength: 0)
+                    Button(L("설정에서 설치", "Install in Settings")) { m.openSetup() }.buttonStyle(OutlineButton())
+                }
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Color(hex: 0xFDF1F1)))
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L("화질", "Quality")).font(.system(size: 13, weight: .semibold))
+                HStack(spacing: 10) {
+                    ForEach(MirrorQuality.allCases, id: \.self) { q in qualityCard(q) }
+                }
+            }
+            VStack(spacing: 0) {
+                optionRow(L("소리도 전송", "Forward audio"), L("휴대폰 소리를 이 Mac에서 재생", "Play the phone's sound on this Mac"), \.audio)
+                Divider()
+                optionRow(L("창을 항상 위에", "Window always on top"), L("미러링 창이 다른 창에 가려지지 않게", "Keep the mirroring window above other windows"), \.alwaysOnTop)
+                Divider()
+                optionRow(L("미러링 중 폰 화면 끄기", "Turn phone screen off"), L("이 Mac에서는 계속 보이고 조작돼요", "Still visible and usable from this Mac"), \.turnScreenOff)
+                Divider()
+                optionRow(L("동영상으로 녹화", "Record to a video"), L("Movies 폴더에 .mp4로 저장", "Saved as an .mp4 in your Movies folder"), \.record)
+            }
+            .padding(.horizontal, 14)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.line))
+            HStack {
+                Button(L("미러링 로그 보기", "Mirroring log")) { m.openLog() }.buttonStyle(TextButton(color: .brandText))
+                Spacer()
+                Button(L("완료", "Done")) { close() }.buttonStyle(OutlineButton())
+            }.frame(height: 44)
+        }
+        .padding(EdgeInsets(top: 28, leading: 32, bottom: 24, trailing: 32))
+        .frame(width: 520)
+        .background(Color.soft)
+        .foregroundColor(.ink)
+        .environment(\.colorScheme, .light)
+    }
+
+    func qualityCard(_ q: MirrorQuality) -> some View {
+        let selected = m.mirror.quality == q
+        let detail: String
+        switch q {
+        case .low: detail = L("4 Mbps · 느린 Wi‑Fi", "4 Mbps · slow Wi‑Fi")
+        case .normal: detail = L("8 Mbps · 대부분", "8 Mbps · most cases")
+        case .high: detail = L("16 Mbps · 빠른 Wi‑Fi", "16 Mbps · fast Wi‑Fi")
+        }
+        return Button { m.binding(\.quality).wrappedValue = q } label: {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(q.shortTitle).font(.system(size: 14, weight: .semibold)).foregroundColor(.ink)
+                Text(detail).font(.system(size: 12)).foregroundColor(.muted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12).padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: 10).fill(selected ? Color.mint : .white))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(selected ? Color.brand : Color.line2, lineWidth: selected ? 2 : 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    func optionRow(_ title: String, _ detail: String, _ key: ReferenceWritableKeyPath<ScreenMirror, Bool>) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 13, weight: .medium))
+                Text(detail).font(.system(size: 12)).foregroundColor(.muted)
+            }
+            Spacer()
+            Toggle(title, isOn: m.binding(key)).toggleStyle(.switch).tint(.brandText).labelsHidden()
+        }
+        .padding(.vertical, 10)
+    }
+}
+
 // MARK: - 창 만들기
 
 private final class ObserverBox { var token: NSObjectProtocol? }
@@ -863,6 +1049,13 @@ func makeSetupWindow(reviver: Reviver, startAt: SetupModel.Step? = nil, onAdbRea
     return w
 }
 
+func makeMirrorWindow(model: MirrorOptionsModel, onClose: @escaping () -> Void) -> NSWindow {
+    var window: NSWindow?
+    let w = hostWindow(MirrorOptionsView(m: model, close: { window?.close() }), title: L("미러링 옵션 — ", "Mirroring options — ") + appShortName) { onClose() }
+    window = w
+    return w
+}
+
 func makePairWindow(reviver: Reviver, onClose: @escaping () -> Void) -> NSWindow {
     let pair = PairModel(reviver: reviver)
     var window: NSWindow?
@@ -886,7 +1079,8 @@ func saveSnapshots(to dir: URL) {
         host.cacheDisplay(in: host.bounds, to: rep)
         try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent(name))
     }
-    let phone = Device(serial: "adb-XXXX._adb-tls-connect._tcp", state: "device", model: "SM-F971N")
+    let phone = KnownPhone(id: "R5CR10XXXX", name: "Galaxy Z Flip", android: "15", mdnsName: nil, lastAddr: "192.168.0.10:37215",
+                           winner: nil, enabled: true, addedAt: Date())
     for step in SetupModel.Step.allCases {
         let m = SetupModel(reviver: r, connected: step == .done ? phone : nil, preview: step)
         m.skipped = step == .adb ? [] : [.adb]
@@ -896,6 +1090,7 @@ func saveSnapshots(to dir: URL) {
         save(view, "setup-\(step.rawValue + 1).png")
     }
     save(PairWindowView(pair: PairModel(reviver: r), autoStart: false, close: {}), "pair-window.png")
+    save(MirrorOptionsView(m: MirrorOptionsModel(mirror: ScreenMirror()), close: {}), "mirror-window.png")
     // 로컬 네트워크 도우미 창 (시스템 설정 옆) — 밝게·어둡게, 기다리는 중 / 허용됨
     for dark in [false, true] {
         for allowed in [false, true] {
@@ -926,17 +1121,26 @@ func saveSnapshots(to dir: URL) {
 
     // 카드형 패널 — 밝게·어둡게 × 연결됨 / 옵션 펼침 / 끊김 + 권한 문제 / 다시 붙이는 중 + 업데이트
     let pm = ScreenMirror()
-    let galaxy = PhoneInfo(serial: "adb-XXXX._adb-tls-connect._tcp", name: "Galaxy Z Flip", android: "15", addr: "192.168.0.10:37215", since: Date().addingTimeInterval(-12 * 60))
+    let galaxy = PhoneRow(id: "R5CR10XXXX", name: "Galaxy Z Flip", android: "15", addr: "192.168.0.10:37215",
+                          state: .connected(since: Date().addingTimeInterval(-12 * 60)), mirroring: false)
+    let pixel = PhoneRow(id: "4A1B2XXXX", name: "Pixel 8", android: "16", addr: "192.168.0.21:41235", state: .dropped, mirroring: false)
+    func two(_ m: PanelModel, _ a: PhoneRow, _ b: PhoneRow) {
+        m.phones = [a, b]; m.enabledCount = 2
+        m.connectedCount = [a, b].filter { if case .connected = $0.state { return true }; return false }.count
+        m.overall = m.connectedCount == 2 ? .allConnected : .someDropped
+    }
+    var both = pixel; both.state = .connected(since: Date().addingTimeInterval(-3 * 60))
+    var mirroring = galaxy; mirroring.mirroring = true
     let states: [(String, (PanelModel) -> Void)] = [
-        ("connected", { $0.link = .connected; $0.phone = galaxy }),
-        ("options", { $0.link = .connected; $0.phone = galaxy; $0.mirroring = true; $0.showOptions = true }),
-        ("disconnected", { $0.link = .disconnected; $0.needsPermission = true }),
-        ("working", { $0.link = .working; $0.status = L("연결하는 중…", "Connecting…"); $0.update = .available("1.4.0") }),
+        ("connected", { $0.link = .connected; two($0, galaxy, both) }),
+        ("mirroring", { $0.link = .connected; two($0, mirroring, both); $0.mirroring = true; $0.expanded = galaxy.id }),
+        ("disconnected", { $0.link = .disconnected; two($0, galaxy, pixel); $0.restartOffer = true }),
+        ("working", { $0.link = .working; $0.status = L("연결하는 중…", "Connecting…"); two($0, galaxy, pixel); $0.busyIds = [pixel.id]; $0.update = .available("1.5.0") }),
     ]
     for dark in [false, true] {
         for (name, setup) in states {
             let m = PanelModel(mirror: pm)
-            m.appVersion = "1.3.1"; m.adbVersion = "36.0.0"; m.lastName = "Galaxy Z Flip"
+            m.appVersion = "1.4.1"; m.adbVersion = "36.0.0"
             setup(m)
             let view = PanelView(m: m, solid: dark ? Color(white: 0.17) : Color(white: 0.985))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
